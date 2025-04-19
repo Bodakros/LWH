@@ -31,7 +31,6 @@ class Address(models.Model):
     postal_code = models.CharField(max_length=20, verbose_name="Поштовий індекс", db_index=True)
     additional_info = models.TextField(blank=True, null=True, verbose_name="Додаткові примітки (напр., вхід)")
 
-
     def get_full_street(self):
         """Повертає повну назву вулиці з типом"""
         if not self.street:
@@ -39,7 +38,6 @@ class Address(models.Model):
         if self.street_type:
             return f"{self.street_type} {self.street}"
         return self.street
-
 
     def __str__(self):
         locality_prefix = self.get_locality_type_display()
@@ -53,15 +51,14 @@ class Address(models.Model):
             self.get_full_street() if self.get_full_street() else None,
             f"буд. {self.building}"
         ]
-    # Прибираємо пусті елементи
+        # Прибираємо пусті елементи
         formatted_address = ", ".join(filter(None, address_parts))
         return formatted_address
 
-
-class Meta:
-    verbose_name = "Адреса складу"
-    verbose_name_plural = "Адреси складів"
-    ordering = ['country', 'oblast', 'raion', 'locality']
+    class Meta:
+        verbose_name = "Адреса складу"
+        verbose_name_plural = "Адреси складів"
+        ordering = ['country', 'oblast', 'raion', 'locality']
 
 
 class Warehouse(models.Model):
@@ -78,6 +75,13 @@ class Warehouse(models.Model):
         on_delete=models.CASCADE,
         related_name='warehouse'
     )
+
+    ## Віртуальний тур
+    # virtual_tour_url = models.URLField(
+    #     blank=True,
+    #     null=True,
+    #     verbose_name="URL віртуального туру"
+    # )
 
     @property
     def total_capacity(self):
@@ -146,3 +150,105 @@ class Stock(models.Model):
         verbose_name = "Комірка складу"
         verbose_name_plural = "Комірки складу"
         ordering = ['warehouse', 'location_code']
+
+
+class WarehouseImage(models.Model):
+    """Модель для зберігання зображень складу"""
+    warehouse = models.ForeignKey(
+        'Warehouse',
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name="Склад"
+    )
+    image = models.ImageField(
+        upload_to='warehouse_images/',
+        verbose_name="Зображення"
+    )
+    title = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Назва зображення"
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Опис зображення"
+    )
+    is_main = models.BooleanField(
+        default=False,
+        verbose_name="Головне зображення"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок відображення"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Зображення складу"
+        verbose_name_plural = "Зображення складів"
+        ordering = ['warehouse', 'order', '-created_at']
+
+    def __str__(self):
+        return f"Зображення {self.id} для складу {self.warehouse.name}"
+
+    def save(self, *args, **kwargs):
+        # Якщо це головне зображення, знімаємо прапорець "головне" з інших зображень цього складу
+        if self.is_main:
+            WarehouseImage.objects.filter(
+                warehouse=self.warehouse,
+                is_main=True
+            ).exclude(pk=self.pk).update(is_main=False)
+        super().save(*args, **kwargs)
+
+
+class StockImage(models.Model):
+    """Модель для зберігання зображень комірки"""
+    stock = models.ForeignKey(
+        'Stock',
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name="Комірка"
+    )
+    image = models.ImageField(
+        upload_to='stock_images/',
+        verbose_name="Зображення"
+    )
+    title = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Назва зображення"
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Опис зображення"
+    )
+    is_main = models.BooleanField(
+        default=False,
+        verbose_name="Головне зображення"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок відображення"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Зображення комірки"
+        verbose_name_plural = "Зображення комірок"
+        ordering = ['stock', 'order', '-created_at']
+
+    def __str__(self):
+        return f"Зображення {self.id} для комірки {self.stock.name}"
+
+    def save(self, *args, **kwargs):
+        # Якщо це головне зображення, знімаємо прапорець "головне" з інших зображень цієї комірки
+        if self.is_main:
+            StockImage.objects.filter(
+                stock=self.stock,
+                is_main=True
+            ).exclude(pk=self.pk).update(is_main=False)
+        super().save(*args, **kwargs)

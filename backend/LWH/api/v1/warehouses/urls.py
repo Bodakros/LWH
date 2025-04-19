@@ -15,4 +15,11 @@ urlpatterns = [
     # Address-related endpoints
     path('addresses/', views.address_list, name='address-list'),
     path('addresses/<int:pk>/', views.address_detail, name='address-detail'),
+
+    path('<int:warehouse_id>/images/', views.warehouse_images, name='warehouse-images'),
+    path('<int:warehouse_id>/images/<int:pk>/', views.warehouse_image_detail, name='warehouse-image-detail'),
+
+    # Warehouse and stocks image endpoints
+    path('<int:warehouse_id>/stocks/<int:stock_id>/images/', views.stock_images, name='stock-images'),
+    path('<int:warehouse_id>/stocks/<int:stock_id>/images/<int:pk>/', views.stock_image_detail, name='stock-image-detail'),
 ]
