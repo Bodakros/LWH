@@ -40,11 +40,10 @@ INSTALLED_APPS = [
 
     'rest_framework',
 
-    'api',
-    'users',
-    'products',
-    'warehouses',
-    'inventory',
+    'api.v1.users',
+    'api.v1.products',
+    'api.v1.warehouses',
+    'api.v1.inventory',
 
 ]
 
