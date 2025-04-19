@@ -32,30 +32,30 @@ class Address(models.Model):
     additional_info = models.TextField(blank=True, null=True, verbose_name="Додаткові примітки (напр., вхід)")
 
 
-def get_full_street(self):
-    """Повертає повну назву вулиці з типом"""
-    if not self.street:
-        return ""
-    if self.street_type:
-        return f"{self.street_type} {self.street}"
-    return self.street
+    def get_full_street(self):
+        """Повертає повну назву вулиці з типом"""
+        if not self.street:
+            return ""
+        if self.street_type:
+            return f"{self.street_type} {self.street}"
+        return self.street
 
 
-def __str__(self):
-    locality_prefix = self.get_locality_type_display()
+    def __str__(self):
+        locality_prefix = self.get_locality_type_display()
 
-    address_parts = [
-        self.country,
-        f"{self.oblast} область" if self.oblast else None,
-        f"{self.raion} район" if self.raion else None,
-        f"{self.hromada} ТГ" if self.hromada else None,
-        f"{locality_prefix} {self.locality}",
-        self.get_full_street() if self.get_full_street() else None,
-        f"буд. {self.building}"
-    ]
+        address_parts = [
+            self.country,
+            f"{self.oblast} область" if self.oblast else None,
+            f"{self.raion} район" if self.raion else None,
+            f"{self.hromada} ТГ" if self.hromada else None,
+            f"{locality_prefix} {self.locality}",
+            self.get_full_street() if self.get_full_street() else None,
+            f"буд. {self.building}"
+        ]
     # Прибираємо пусті елементи
-    formatted_address = ", ".join(filter(None, address_parts))
-    return formatted_address
+        formatted_address = ", ".join(filter(None, address_parts))
+        return formatted_address
 
 
 class Meta:

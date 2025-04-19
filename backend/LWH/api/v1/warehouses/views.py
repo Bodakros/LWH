@@ -8,6 +8,7 @@ from .models import Warehouse, Stock, Address
 # We'll need to create serializers later
 from .serializers import WarehouseSerializer, StockSerializer, AddressSerializer
 
+
 @api_view(['GET', 'POST'])
 def warehouse_list(request):
     """
@@ -24,6 +25,7 @@ def warehouse_list(request):
             serializer.save(owner=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def warehouse_detail(request, pk):
@@ -47,6 +49,7 @@ def warehouse_detail(request, pk):
         warehouse.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 @api_view(['GET', 'POST'])
 def stock_list(request, warehouse_id):
     """
@@ -65,6 +68,7 @@ def stock_list(request, warehouse_id):
             serializer.save(warehouse=warehouse)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def stock_detail(request, warehouse_id, pk):
@@ -89,6 +93,7 @@ def stock_detail(request, warehouse_id, pk):
         stock.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 @api_view(['GET', 'POST'])
 def address_list(request):
     """
@@ -105,6 +110,7 @@ def address_list(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def address_detail(request, pk):
