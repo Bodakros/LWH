@@ -2,9 +2,10 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from backend.LWH.api.v1.products.models import Product
-from backend.LWH.api.v1.warehouses.models import Warehouse, Stock
 from decimal import Decimal
+
+from ..products.models import Product
+from ..warehouses.models import Stock, Warehouse
 
 
 class InventoryItem(models.Model):
@@ -628,4 +629,3 @@ class ReceivingItem(models.Model):
         # Оновлюємо статус батьківського запису
         self.receiving_record.update_status()
 
-        
