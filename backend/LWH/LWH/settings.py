@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'api.v1.warehouses',
     'api.v1.inventory',
     'api.v1.search',
+    'api.v1.automation'
 
 ]
 
@@ -180,3 +181,30 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery Configuration
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# Define default schedule for beat
+CELERY_BEAT_SCHEDULE = {
+    'inventory_check': {
+        'task': 'api.v1.automation.tasks.check_all_inventory_levels',
+        'schedule': 3600,  # Run every hour (in seconds)
+        'enabled': True,
+    },
+    'price_update': {
+        'task': 'api.v1.automation.tasks.update_product_prices',
+        'schedule': 86400,  # Run once a day (in seconds)
+        'enabled': True,
+    },
+    'product_comparison': {
+        'task': 'api.v1.automation.tasks.analyze_product_comparisons',
+        'schedule': 43200,  # Run twice a day (in seconds)
+        'enabled': True,
+    }
+}

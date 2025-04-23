@@ -6,4 +6,5 @@ urlpatterns = [
     path('warehouses/', include('api.v1.warehouses.urls')),
     path('inventory/', include('api.v1.inventory.urls')),
     path('search/', include('api.v1.search.urls')),
+    path('automation/', include('api.v1.automation.urls')),
 ]
