@@ -5,6 +5,7 @@ from django.conf import settings
 import uuid
 import json
 
+
 class ProductCategory(models.Model):
     """Модель для категорій продуктів з підтримкою ієрархії"""
     name = models.CharField(max_length=255, verbose_name=_("Назва категорії"))
@@ -18,7 +19,8 @@ class ProductCategory(models.Model):
         verbose_name=_("Батьківська категорія")
     )
     description = models.TextField(blank=True, verbose_name=_("Опис категорії"))
-    image = models.ImageField(upload_to='category_images/', blank=True, null=True, verbose_name=_("Зображення категорії"))
+    image = models.ImageField(upload_to='category_images/', blank=True, null=True,
+                              verbose_name=_("Зображення категорії"))
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
@@ -104,7 +106,8 @@ class TaxRate(models.Model):
         blank=True,
         null=True,
         verbose_name=_("Формула розрахунку"),
-        help_text=_("Використовується для типу розрахунку 'На основі формули'. Використовуйте змінні price, quantity, etc.")
+        help_text=_(
+            "Використовується для типу розрахунку 'На основі формули'. Використовуйте змінні price, quantity, etc.")
     )
 
     applicable_categories = models.ManyToManyField(
@@ -256,7 +259,8 @@ class Product(models.Model):
     attributes_json = models.JSONField(default=dict, blank=True, verbose_name=_("Динамічні атрибути"))
 
     # Зображення продукту (головне зображення)
-    main_image = models.ImageField(upload_to='product_images/', blank=True, null=True, verbose_name=_("Головне зображення"))
+    main_image = models.ImageField(upload_to='product_images/', blank=True, null=True,
+                                   verbose_name=_("Головне зображення"))
 
     # Статуси і часові мітки
     is_active = models.BooleanField(default=True, verbose_name=_("Активний"))
@@ -530,7 +534,8 @@ class ProductAttributeValue(models.Model):
 
     # Різні типи значень атрибутів
     text_value = models.TextField(blank=True, null=True, verbose_name=_("Текстове значення"))
-    number_value = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True, verbose_name=_("Числове значення"))
+    number_value = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True,
+                                       verbose_name=_("Числове значення"))
     boolean_value = models.BooleanField(blank=True, null=True, verbose_name=_("Логічне значення"))
     date_value = models.DateField(blank=True, null=True, verbose_name=_("Значення дати"))
 
@@ -660,6 +665,7 @@ class ProductMultipleAttributeValue(models.Model):
 
         # Після збереження оновлюємо JSON-поле продукту
         self.product_attribute._sync_with_product_json()
+
 
 # Додаткові моделі, специфічні для різних типів продуктів
 # Замість створення окремих таблиць, ми використовуємо атрибути
