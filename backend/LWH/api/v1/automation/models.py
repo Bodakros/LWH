@@ -3,6 +3,11 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from decimal import Decimal
 
+import re
+import math
+import operator
+from decimal import Decimal
+
 from ..products.models import Product, ProductCategory
 from ..warehouses.models import Warehouse, Stock
 
@@ -257,50 +262,58 @@ class PricingRule(models.Model):
     def __str__(self):
         return f"Pricing Rule: {self.base_rule.name}"
 
-    def calculate_price_adjustment(self, product, base_price, cost_price=None):
-        """
-        Calculate new price according to the rule
+    # Замінюємо в класі PricingRule метод calculate_price_adjustment
+# Знаходимо метод в класі (приблизно рядки 210-270)
 
-        Args:
-            product: Product for which the price is calculated
-            base_price: Initial price
-            cost_price: Cost price (optional)
+def calculate_price_adjustment(self, product, base_price, cost_price=None):
+    """
+    Calculate new price according to the rule
 
-        Returns:
-            Decimal: Newly calculated price
-        """
-        adjusted_price = Decimal(base_price)
+    Args:
+        product: Product for which the price is calculated
+        base_price: Initial price
+        cost_price: Cost price (optional)
 
-        # Check category match
-        if self.product_categories.exists() and product.category not in self.product_categories.all():
-            return base_price  # Rule doesn't apply to this category
+    Returns:
+        Decimal: Newly calculated price
+    """
 
-        # Calculate based on adjustment type
-        if self.adjustment_type == 'percentage':
-            adjustment = base_price * (self.adjustment_value / Decimal('100.0'))
-            adjusted_price += adjustment
 
-        elif self.adjustment_type == 'fixed':
-            adjusted_price += self.adjustment_value
+    adjusted_price = Decimal(str(base_price))
 
-        elif self.adjustment_type == 'formula' and self.formula:
-            try:
-                # Basic variables for formula
-                variables = {
-                    'base_price': float(base_price),
-                    'cost_price': float(cost_price) if cost_price else 0,
-                }
+    # Check category match
+    if self.product_categories.exists() and product.category not in self.product_categories.all():
+        return base_price  # Rule doesn't apply to this category
 
-                # Calculate formula (in a real project, use safer solutions)
-                result = eval(self.formula, {"__builtins__": {}}, variables)
-                adjusted_price = Decimal(str(result))
-            except Exception as e:
-                # Log error and return base price
-                print(f"Error calculating price with formula: {e}")
-                return base_price
+    # Calculate based on adjustment type
+    if self.adjustment_type == 'percentage':
+        adjustment = base_price * (self.adjustment_value / Decimal('100.0'))
+        adjusted_price += adjustment
 
-        # Apply margin constraints if specified and cost_price is known
-        if cost_price and (self.min_margin is not None or self.max_margin is not None):
+    elif self.adjustment_type == 'fixed':
+        adjusted_price += self.adjustment_value
+
+    elif self.adjustment_type == 'formula' and self.formula:
+        try:
+            # Basic variables for formula
+            variables = {
+                'base_price': float(base_price),
+                'cost_price': float(cost_price) if cost_price else 0,
+            }
+
+            # Safe formula evaluation without using eval()
+            result = self._safe_eval_formula(self.formula, variables)
+            adjusted_price = Decimal(str(result))
+        except Exception as e:
+            # Log error and return base price
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating price with formula for product {product.id}: {e}")
+            return base_price
+
+    # Apply margin constraints if specified and cost_price is known
+    if cost_price and (self.min_margin is not None or self.max_margin is not None):
+        try:
             margin_percent = ((adjusted_price - cost_price) / cost_price) * 100
 
             if self.min_margin is not None and margin_percent < self.min_margin:
@@ -310,10 +323,85 @@ class PricingRule(models.Model):
             if self.max_margin is not None and margin_percent > self.max_margin:
                 # Adjust to maximum margin
                 adjusted_price = cost_price * (1 + (self.max_margin / 100))
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating margin constraints for product {product.id}: {e}")
+            # Continue with the price we have calculated so far
 
-        # Ensure price doesn't become negative
-        return max(adjusted_price, Decimal('0.01'))
+    # Ensure price doesn't become negative
+    return max(adjusted_price, Decimal('0.01'))
 
+def _safe_eval_formula(self, formula, variables):
+    """
+    Safely evaluate a formula string without using eval().
+
+    Only basic math operations and predefined variables are allowed.
+
+    Args:
+        formula: The formula to evaluate
+        variables: Dictionary of variables available to the formula
+
+    Returns:
+        float: Result of the formula evaluation
+    """
+
+
+    # Define allowed operators and functions
+    operators = {
+        '+': operator.add,
+        '-': operator.sub,
+        '*': operator.mul,
+        '/': operator.truediv,
+        '^': operator.pow,
+        '%': operator.mod
+    }
+
+    # Available math functions
+    math_functions = {
+        'abs': abs,
+        'round': round,
+        'min': min,
+        'max': max,
+        'ceil': math.ceil,
+        'floor': math.floor,
+        'pow': math.pow,
+        'sqrt': math.sqrt
+    }
+
+    # Merge variables with math functions
+    safe_vars = {**variables, **math_functions}
+
+    # Tokenize the formula
+    tokens = re.findall(r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b|\d+\.\d+|\d+|[-+*/^%()])', formula)
+
+    # Simple validation - check for valid tokens only
+    for token in tokens:
+        if token.isalpha() and token not in safe_vars:
+            raise ValueError(f"Unknown variable or function: {token}")
+
+    # Use a third-party library for safe evaluation
+    try:
+        # Try to use simpleeval if available
+        from simpleeval import simple_eval
+        return simple_eval(formula, names=safe_vars, operators=operators)
+    except ImportError:
+        # Fallback to a very simple and limited parser for basic operations
+        # This is a fallback and not a complete solution
+        result = 0
+        current_op = '+'
+
+        for token in tokens:
+            if token in operators:
+                current_op = token
+            elif token in safe_vars:
+                val = safe_vars[token]
+                result = operators[current_op](result, val)
+            elif token.replace('.', '', 1).isdigit():
+                val = float(token)
+                result = operators[current_op](result, val)
+
+        return result
 
 class RestockRule(models.Model):
     """Model for automatic inventory replenishment"""
@@ -542,6 +630,122 @@ class ProductComparisonSettings(models.Model):
             # Add other scoring factors here
 
             scored_products.append((product, score))
+
+        # Sort by score (from highest to lowest)
+        scored_products.sort(key=lambda x: x[1], reverse=True)
+
+        return scored_products
+
+    def compare_products(self, products):
+        """
+        Compare products based on defined settings
+
+        Args:
+            products: List of products to compare
+
+        Returns:
+            list: Products sorted by comparison score
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        scored_products = []
+
+        try:
+            # Filter products to the correct category
+            category_products = [p for p in products if p.category == self.category]
+
+            # Need at least 2 products to compare
+            if len(category_products) < 2:
+                logger.info(f"Not enough products in category {self.category.name} to compare")
+                return [(p, 0) for p in category_products]  # Return with zero scores
+
+            # Get product price range for normalization
+            max_price = max(p.base_price for p in category_products)
+            min_price = min(p.base_price for p in category_products)
+            price_range = max_price - min_price
+
+            # Get attribute weights from related model
+            attribute_weights = self.attribute_weights.all()
+            attributes_to_check = {weight.attribute_name: weight for weight in attribute_weights}
+
+            for product in category_products:
+                score = 0
+
+                # Price score (lower is better by default)
+                if price_range > 0:
+                    normalized_price = (max_price - product.base_price) / price_range
+                    price_score = normalized_price * float(self.price_weight)
+                    score += price_score
+
+                # Rating score (if available)
+                if hasattr(product, 'rating') and product.rating:
+                    rating_score = float(product.rating) / 5.0 * float(self.rating_weight)
+                    score += rating_score
+
+                # Availability score based on inventory
+                try:
+                    from ..inventory.models import InventoryItem
+                    inventory_sum = InventoryItem.objects.filter(
+                        product=product,
+                        status='available'
+                    ).aggregate(total_quantity=models.Sum('quantity'))
+
+                    total_quantity = inventory_sum.get('total_quantity') or 0
+
+                    # Simple availability score - could be more sophisticated
+                    if total_quantity > 0:
+                        availability_score = min(1.0, total_quantity / 100) * float(self.availability_weight)
+                        score += availability_score
+                except Exception as e:
+                    logger.error(f"Error calculating availability score: {e}")
+
+                # Custom attributes comparison
+                for attr_name, weight_obj in attributes_to_check.items():
+                    try:
+                        # Get attribute from product JSON
+                        attr_value = product.get_attribute(attr_name)
+
+                        if attr_value is not None:
+                            # Process based on comparison type
+                            if weight_obj.comparison_type == 'more_better':
+                                # Normalize based on all products
+                                values = [p.get_attribute(attr_name) for p in category_products
+                                          if p.get_attribute(attr_name) is not None]
+
+                                if values:
+                                    max_val = max(values)
+                                    min_val = min(values)
+                                    val_range = max_val - min_val
+
+                                    if val_range > 0:
+                                        normalized_value = (attr_value - min_val) / val_range
+                                        attr_score = normalized_value * float(weight_obj.weight)
+                                        score += attr_score
+
+                            elif weight_obj.comparison_type == 'less_better':
+                                # Normalize based on all products
+                                values = [p.get_attribute(attr_name) for p in category_products
+                                          if p.get_attribute(attr_name) is not None]
+
+                                if values:
+                                    max_val = max(values)
+                                    min_val = min(values)
+                                    val_range = max_val - min_val
+
+                                    if val_range > 0:
+                                        normalized_value = (max_val - attr_value) / val_range
+                                        attr_score = normalized_value * float(weight_obj.weight)
+                                        score += attr_score
+                    except Exception as e:
+                        logger.error(f"Error processing attribute {attr_name}: {e}")
+                        continue
+
+                scored_products.append((product, score))
+        except Exception as e:
+            logger.error(f"Error comparing products: {e}")
+            # Return products with zero scores in case of error
+            return [(p, 0) for p in products if p.category == self.category]
 
         # Sort by score (from highest to lowest)
         scored_products.sort(key=lambda x: x[1], reverse=True)

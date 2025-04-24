@@ -1,13 +1,10 @@
 import os
 from celery import Celery
-from django.conf import settings
-
-from backend.LWH.api.v1.automation.tasks import (
+from ..api.v1.automation.tasks import (
     check_all_inventory_levels,
     update_product_prices,
     analyze_product_comparisons
 )
-
 # Set the default Django settings module for the 'celery' program
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'LWH.settings')
 
@@ -27,6 +24,8 @@ def setup_periodic_tasks(sender, **kwargs):
     """
     Set up periodic tasks dynamically based on settings
     """
+    from django.conf import settings
+
     automation_settings = getattr(settings, 'AUTOMATION_SETTINGS', {})
 
     # Check if background tasks are globally enabled
@@ -35,6 +34,13 @@ def setup_periodic_tasks(sender, **kwargs):
 
     # Get task settings
     tasks_config = automation_settings.get('TASKS', {})
+
+    # # Import tasks here to avoid circular imports
+    # from api.v1.automation.tasks import (
+    #     check_all_inventory_levels,
+    #     update_product_prices,
+    #     analyze_product_comparisons
+    # )
 
     # Configure inventory check task
     inventory_check = tasks_config.get('inventory_check', {})
@@ -62,6 +68,3 @@ def setup_periodic_tasks(sender, **kwargs):
             analyze_product_comparisons.s(),
             name='product-comparison'
         )
-
-# Import all Celery tasks to make them visible to the setup function
-
