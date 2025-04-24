@@ -4,7 +4,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.conf import settings
 from django.utils import timezone
+from celery import current_app
+
 
 from .models import (
     AutomationRule, WarehouseSelectionRule, PricingRule,
@@ -16,7 +19,6 @@ from .serializers import (
     ProductComparisonSettingsSerializer, ComparisonAttributeWeightSerializer
 )
 from ..users.permissions import IsSeller, IsOwner
-
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -842,12 +844,10 @@ def compare_products(request):
 @permission_classes([IsAuthenticated])
 def manage_automation_tasks(request):
     """
-    GET: Get current automation tasks configuration
-    PUT: Update automation tasks configuration (admin only)
-    POST: Manually trigger a specific task
+    GET: Отримати поточну конфігурацію завдань автоматизації
+    PUT: Оновити конфігурацію завдань автоматизації (тільки адміністратор)
+    POST: Вручну запустити конкретне завдання
     """
-    from django.conf import settings
-
     # Get current settings
     automation_settings = getattr(settings, 'AUTOMATION_SETTINGS', {
         'ENABLE_BACKGROUND_TASKS': False,
@@ -862,15 +862,27 @@ def manage_automation_tasks(request):
         # Get celery worker status if possible
         worker_status = {"status": "Unknown"}
         try:
-            from celery.task.control import inspect
-            insp = inspect()
-            active = insp.active()
-            worker_status = {
-                "status": "Online" if active else "Offline",
-                "active_tasks": active if active else {}
-            }
-        except:
-            pass  # Ignore errors if we can't connect to Celery
+            # Використовуємо current_app.control.inspect()
+            insp = current_app.control.inspect(timeout=1) # Додаємо timeout для уникнення зависання
+            active = insp.active() # Перевіряємо активні завдання
+            ping_result = insp.ping() # Перевіряємо, чи воркери відповідають
+
+            if ping_result: # Якщо хоч один воркер відповів
+                worker_status = {
+                    "status": "Online",
+                    "active_tasks": active if active else {},
+                    "ping_details": ping_result
+                }
+            else:
+                worker_status = {"status": "Offline or Unresponsive"}
+
+        except Exception as e:
+            # Логуємо помилку для діагностики
+            # import logging
+            # logging.error(f"Could not connect to Celery: {e}")
+            worker_status = {"status": "Error connecting", "error": str(e)}
+            # Ignore errors if we can't connect to Celery
+
 
         return Response({
             "settings": automation_settings,
@@ -881,7 +893,7 @@ def manage_automation_tasks(request):
         # Check if user has permission to modify settings
         if not request.user.is_staff:
             return Response(
-                {"detail": "Only admin users can modify automation task settings."},
+                {"detail": "Тільки адміністратори можуть змінювати налаштування автоматизації."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -891,46 +903,60 @@ def manage_automation_tasks(request):
         # Validate settings structure
         if 'ENABLE_BACKGROUND_TASKS' not in new_settings:
             return Response(
-                {"detail": "ENABLE_BACKGROUND_TASKS key is required."},
+                {"detail": "Необхідний ключ ENABLE_BACKGROUND_TASKS."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if 'TASKS' not in new_settings:
             return Response(
-                {"detail": "TASKS key is required."},
+                {"detail": "Необхідний ключ TASKS."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Check if tasks have the correct format
-        for task_name, task_config in new_settings['TASKS'].items():
+        for task_name, task_config in new_settings.get('TASKS', {}).items():
+            if not isinstance(task_config, dict):
+                return Response(
+                    {"detail": f"Конфігурація для завдання {task_name} має бути словником."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             if 'enabled' not in task_config:
                 return Response(
-                    {"detail": f"Task {task_name} must have 'enabled' key."},
+                    {"detail": f"Завдання {task_name} повинно мати ключ 'enabled'."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             if 'schedule' not in task_config:
                 return Response(
-                    {"detail": f"Task {task_name} must have 'schedule' key."},
+                    {"detail": f"Завдання {task_name} повинно мати ключ 'schedule'."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Update the settings in memory
-        # In production, you'd want to store this in a database
-        settings.AUTOMATION_SETTINGS = new_settings
+        # --- УВАГА: Збереження налаштувань ---
+        # Оновлення settings в пам'яті не є надійним способом для продакшену.
+        # settings.AUTOMATION_SETTINGS = new_settings
+        # Розгляньте збереження цих налаштувань у базі даних або спеціальному конфіг-файлі.
+        # Наприклад, можна використовувати модель Django для зберігання налаштувань.
+        # Зараз я залишу це як є, але ви повинні це змінити.
+        print("УВАГА: Налаштування оновлено тільки в пам'яті. Реалізуйте збереження в БД.")
 
         # Restart celery beat to apply new schedule
         # This is a simplified approach - in production you'd use a more robust method
+        restart_status = "Restart signal not sent (implement robust method)"
         try:
-            from celery.task.control import broadcast
-            broadcast('pool_restart', arguments={'reload': True})
-            restart_status = "Celery workers signaled to restart"
+            # Використовуємо current_app.control.broadcast()
+            # Сигналізуємо воркерам перезавантажити пул (це може перезавантажити конфігурацію)
+            # Зверніть увагу: це не перезапустить сам celery beat!
+            # Зміна розкладу в beat вимагає його перезапуску окремо.
+            result = current_app.control.broadcast('pool_restart', arguments={'reload': True})
+            restart_status = f"Celery workers signaled to restart pool. Response: {result}"
         except Exception as e:
-            restart_status = f"Failed to restart Celery workers: {str(e)}"
+            restart_status = f"Failed to signal Celery workers: {str(e)}"
 
         return Response({
-            "settings": settings.AUTOMATION_SETTINGS,
-            "restart_status": restart_status
+            "settings": new_settings, # Повертаємо нові налаштування
+            "restart_status": restart_status,
+            "warning": "Settings updated in memory only. Implement persistent storage."
         })
 
     elif request.method == 'POST':
@@ -939,32 +965,51 @@ def manage_automation_tasks(request):
 
         if not task_name:
             return Response(
-                {"detail": "task_name parameter is required."},
+                {"detail": "Необхідний параметр task_name."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if task exists
-        valid_tasks = ['inventory_check', 'price_update', 'product_comparison']
+        # --- УВАГА: Перевірка завдань ---
+        # Перелік валідних завдань краще отримувати динамічно або з налаштувань
+        valid_tasks = list(automation_settings.get('TASKS', {}).keys())
+        if not valid_tasks:
+            valid_tasks = ['inventory_check', 'price_update', 'product_comparison'] # Fallback
+
         if task_name not in valid_tasks:
             return Response(
-                {"detail": f"Invalid task name. Valid values are: {', '.join(valid_tasks)}"},
+                {"detail": f"Неправильна назва завдання. Допустимі значення: {', '.join(valid_tasks)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Only sellers and admins can run tasks
         if not (request.user.is_seller or request.user.is_staff):
             return Response(
-                {"detail": "Only sellers and admins can trigger tasks."},
+                {"detail": "Тільки продавці та адміністратори можуть запускати завдання."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         # Import and run the task asynchronously
-        from .tasks import run_task_by_name
-        task = run_task_by_name.delay(task_name)
+        try:
+            # Припускаємо, що у вас є файл tasks.py в тому ж додатку
+            from .tasks import run_task_by_name
+            task = run_task_by_name.delay(task_name)
 
-        return Response({
-            "task_id": task.id,
-            "task_name": task_name,
-            "status": "Task started",
-            "message": f"The task '{task_name}' has been triggered and is running in the background"
-        })
+            return Response({
+                "task_id": task.id,
+                "task_name": task_name,
+                "status": "Task triggered",
+                "message": f"Завдання '{task_name}' було запущено у фоновому режимі."
+            })
+        except ImportError:
+            return Response(
+                {"detail": "Не вдалося знайти функцію запуску завдань (tasks.py)."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Помилка під час запуску завдання: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    # Якщо метод не підтримується (наприклад, PATCH, DELETE)
+    return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
