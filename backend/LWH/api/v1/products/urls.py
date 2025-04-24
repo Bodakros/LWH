@@ -34,4 +34,6 @@ urlpatterns = [
     # Атрибути продуктів
     path('<int:product_id>/attributes/', views.product_attribute_list, name='product-attribute-list'),
     path('<int:product_id>/attributes/<int:pk>/', views.product_attribute_detail, name='product-attribute-detail'),
+
+    path('<int:product_id>/images/reorder/', views.reorder_product_images, name='reorder-product-images'),
 ]

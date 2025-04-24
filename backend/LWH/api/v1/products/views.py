@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
+from django.db.models import Max
+from ..utils.image_services import validate_image, process_image, get_image_metadata, generate_thumbnails
 
 from .models import (
     ProductCategory, TaxType, TaxRate, Product, ProductImage,
@@ -442,25 +444,90 @@ def product_image_list(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
 
     if request.method == 'GET':
-        images = product.images.all()
+        images = product.images.all().order_by('order', '-created_at')
         serializer = ProductImageSerializer(images, many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        # Перевіряємо, чи користувач є власником продукту
+        # Check if user is the product seller
         if product.seller != request.user:
             return Response(
-                {"detail": "Ви не маєте дозволу додавати зображення до цього продукту."},
+                {"detail": "You don't have permission to add images to this product."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = ProductImageSerializer(data=request.data)
+        # Get image file from request
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response(
+                {"detail": "No image file provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate image
+        is_valid, error_message = validate_image(
+            image_file,
+            max_size=10 * 1024 * 1024,  # 10MB
+            formats=['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        )
+        if not is_valid:
+            return Response(
+                {"detail": error_message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Process image
+        processed_image = process_image(
+            image_file,
+            quality=85,
+            max_width=2000,
+            max_height=2000
+        )
+
+        # Get image metadata
+        metadata = get_image_metadata(image_file)
+
+        # Create a new serializer instance with processed file
+        serializer_data = request.data.copy()
+        serializer_data['image'] = processed_image
+
+        serializer = ProductImageSerializer(data=serializer_data)
         if serializer.is_valid():
-            serializer.save(product=product)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Add additional data
+            serializer.validated_data['product'] = product
+
+            # Determine if this is the main image (if first image or is_main=True)
+            is_main = product.images.count() == 0 or request.data.get('is_main') == 'true'
+            serializer.validated_data['is_main'] = is_main
+
+            # Set order if not provided
+            if 'order' not in serializer.validated_data:
+                # Get the max order value and add 1
+                max_order = product.images.aggregate(Max('order'))['order__max'] or 0
+                serializer.validated_data['order'] = max_order + 1
+
+            # Save image
+            image = serializer.save()
+
+            # Generate thumbnails
+            thumbnails = generate_thumbnails(
+                image_file,
+                image.image.name,
+                sizes={
+                    'small': (150, 150),
+                    'medium': (300, 300),
+                    'large': (600, 600)
+                }
+            )
+
+            # Return response with metadata
+            response_data = serializer.data
+            response_data['thumbnails'] = thumbnails
+            response_data['metadata'] = metadata
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticatedOrReadOnly])
 @parser_classes([MultiPartParser, FormParser])
@@ -473,34 +540,86 @@ def product_image_detail(request, product_id, pk):
 
     if request.method == 'GET':
         serializer = ProductImageSerializer(image)
-        return Response(serializer.data)
+
+        # Add metadata to response
+        response_data = serializer.data
+        response_data['metadata'] = get_image_metadata(image.image)
+
+        return Response(response_data)
 
     elif request.method == 'PUT':
-        # Перевіряємо, чи користувач є власником продукту
+        # Check permissions
         if product.seller != request.user:
             return Response(
-                {"detail": "Ви не маєте дозволу редагувати зображення цього продукту."},
+                {"detail": "You don't have permission to edit this product's images."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = ProductImageSerializer(image, data=request.data)
+        # Handle image file update if provided
+        image_file = request.FILES.get('image')
+        if image_file:
+            # Validate image
+            is_valid, error_message = validate_image(
+                image_file,
+                max_size=10 * 1024 * 1024,  # 10MB
+                formats=['.jpg', '.jpeg', '.png', '.gif', '.webp']
+            )
+            if not is_valid:
+                return Response(
+                    {"detail": error_message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Process image
+            processed_image = process_image(
+                image_file,
+                quality=85,
+                max_width=2000,
+                max_height=2000
+            )
+
+            # Update serializer data with processed file
+            serializer_data = request.data.copy()
+            serializer_data['image'] = processed_image
+        else:
+            serializer_data = request.data
+
+        serializer = ProductImageSerializer(image, data=serializer_data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            # Handle is_main flag
+            if 'is_main' in request.data and request.data.get('is_main') == 'true':
+                serializer.validated_data['is_main'] = True
+
+            # Save updated image
+            updated_image = serializer.save()
+
+            # Return response with metadata
+            response_data = serializer.data
+            response_data['metadata'] = get_image_metadata(updated_image.image)
+
+            return Response(response_data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        # Перевіряємо, чи користувач є власником продукту
+        # Check permissions
         if product.seller != request.user:
             return Response(
-                {"detail": "Ви не маєте дозволу видаляти зображення цього продукту."},
+                {"detail": "You don't have permission to delete this product's images."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        # Check if it's the main image and if there are other images
+        if image.is_main and product.images.count() > 1:
+            # Find another image to set as main
+            new_main = product.images.exclude(pk=image.pk).first()
+            if new_main:
+                new_main.is_main = True
+                new_main.save()
+
+        # Delete the image
         image.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def product_attribute_list(request, product_id):
@@ -626,3 +745,49 @@ def product_attribute_detail(request, product_id, pk):
 
         attribute_value.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reorder_product_images(request, product_id):
+    """
+    Reorder product images.
+    """
+    product = get_object_or_404(Product, pk=product_id)
+
+    # Check permissions
+    if product.seller != request.user:
+        return Response(
+            {"detail": "You don't have permission to reorder this product's images."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # Get image_id to order mapping from request
+    image_orders = request.data.get('image_orders', [])
+    if not image_orders or not isinstance(image_orders, list):
+        return Response(
+            {"detail": "Invalid data format. Expected a list of {image_id: order} objects."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Update order for each image
+    updated_images = []
+    for item in image_orders:
+        try:
+            image_id = item.get('image_id')
+            new_order = item.get('order')
+
+            if not image_id or new_order is None:
+                continue
+
+            image = ProductImage.objects.get(pk=image_id, product=product)
+            image.order = new_order
+            image.save(update_fields=['order'])
+            updated_images.append(image_id)
+        except ProductImage.DoesNotExist:
+            pass
+
+    return Response({
+        "detail": f"Successfully reordered {len(updated_images)} images.",
+        "updated_images": updated_images
+    })

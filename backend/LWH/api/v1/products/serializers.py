@@ -127,10 +127,37 @@ class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = [
-            'id', 'product', 'image', 'title',
-            'is_main', 'order', 'created_at'
+            'id', 'product', 'image', 'title', 'is_main', 'order', 'created_at',
+            'thumbnail_small', 'thumbnail_medium', 'thumbnail_large'
         ]
         read_only_fields = ['created_at']
+
+    def get_thumbnail_small(self, obj):
+        """Get small thumbnail URL"""
+        from ..utils.image_services import get_thumbnail_url
+        request = self.context.get('request')
+        if request and obj.image:
+            image_url = request.build_absolute_uri(obj.image.url)
+            return get_thumbnail_url(image_url, size='small')
+        return None
+
+    def get_thumbnail_medium(self, obj):
+        """Get medium thumbnail URL"""
+        from ..utils.image_services import get_thumbnail_url
+        request = self.context.get('request')
+        if request and obj.image:
+            image_url = request.build_absolute_uri(obj.image.url)
+            return get_thumbnail_url(image_url, size='medium')
+        return None
+
+    def get_thumbnail_large(self, obj):
+        """Get large thumbnail URL"""
+        from ..utils.image_services import get_thumbnail_url
+        request = self.context.get('request')
+        if request and obj.image:
+            image_url = request.build_absolute_uri(obj.image.url)
+            return get_thumbnail_url(image_url, size='large')
+        return None
 
 
 class ProductAttributeValueSerializer(serializers.ModelSerializer):

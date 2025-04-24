@@ -22,4 +22,8 @@ urlpatterns = [
     # Warehouse and stocks image endpoints
     path('<int:warehouse_id>/stocks/<int:stock_id>/images/', views.stock_images, name='stock-images'),
     path('<int:warehouse_id>/stocks/<int:stock_id>/images/<int:pk>/', views.stock_image_detail, name='stock-image-detail'),
+
+    # Add these new URL paths to the existing urlpatterns list
+    path('<int:warehouse_id>/images/reorder/', views.reorder_warehouse_images, name='reorder-warehouse-images'),
+    path('<int:warehouse_id>/stocks/<int:stock_id>/images/reorder/', views.reorder_stock_images, name='reorder-stock-images'),
 ]
