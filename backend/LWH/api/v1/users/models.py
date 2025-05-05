@@ -21,82 +21,90 @@ class User(AbstractUser):
     )
 
     email = models.EmailField(unique=True, verbose_name="Email")
-    is_email_verified = models.BooleanField(default=False, verbose_name="Email підтверджено")
-    is_seller = models.BooleanField(default=False, verbose_name="Продавець")
-    is_owner = models.BooleanField(default=False, verbose_name="Власник складу")
-    # Зв'язок з основним акаунтом користувача (якщо це другий акаунт)
+    is_email_verified = models.BooleanField(default=False, verbose_name="Email verified")
+    is_seller = models.BooleanField(default=False, verbose_name="Seller")
+    is_owner = models.BooleanField(default=False, verbose_name="Warehouse owner")
+    # Connection with main user account (if this is a secondary account)
     parent_account = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='related_accounts',
-        verbose_name="Пов'язаний основний акаунт"
+        verbose_name="Related general account"
     )
 
-    phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Номер телефону")
+    phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Phone number")
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True,
-                                      verbose_name="Зображення профілю")
+                                      verbose_name="Profile image")
 
     class Meta:
-        verbose_name = "Користувач"
-        verbose_name_plural = "Користувачі"
+        verbose_name = "User"
+        verbose_name_plural = "Users"
 
     def __str__(self):
         role = []
         if self.is_seller:
-            role.append("Продавець")
+            role.append("Seller")
         if self.is_owner:
-            role.append("Власник")
+            role.append("Owner")
         if not role:
-            role.append("Клієнт")
+            role.append("Client")
 
         return f"{self.username} ({', '.join(role)})"
 
 
 class SellerProfile(models.Model):
-    """Профіль продавця з додатковими даними"""
+    """Seller profile with additional data"""
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+        User,  # Use Django's User model directly
         on_delete=models.CASCADE,
         related_name='seller_profile',
-        verbose_name="Користувач"
+        verbose_name="User"
     )
-    nickname = models.CharField(max_length=255, blank=True, null=True, verbose_name="Нік")
-    description = models.TextField(blank=True, null=True, verbose_name="Опис продавця")
-    verified = models.BooleanField(default=False, verbose_name="Верифікований продавець")
+    # Additional seller fields
+    nickname = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nickname")
+    description = models.TextField(blank=True, null=True, verbose_name="Seller description")
+    verified = models.BooleanField(default=False, verbose_name="Verified seller")
     seller_image = models.ImageField(upload_to='seller_images/', blank=True, null=True,
-                                     verbose_name="Зображення продавця")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата створення")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата оновлення")
+                                     verbose_name="Seller image")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created at")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated at")
+
+    # Add these fields that were previously in the custom User model
+    is_seller = models.BooleanField(default=True, verbose_name="Is seller")
 
     class Meta:
-        verbose_name = "Профіль продавця"
-        verbose_name_plural = "Профілі продавців"
+        verbose_name = "Seller Profile"
+        verbose_name_plural = "Seller Profiles"
 
     def __str__(self):
-        return f"Профіль продавця: {self.user.username}"
+        return f"Seller Profile: {self.user.username}"
 
 
 class OwnerProfile(models.Model):
-    """Профіль власника складу з додатковими даними"""
+    """Warehouse owner profile with additional data"""
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+        User,  # Use Django's User model directly
         on_delete=models.CASCADE,
         related_name='owner_profile',
-        verbose_name="Користувач"
+        verbose_name="User"
     )
-    nickname = models.CharField(max_length=255, blank=True, null=True, verbose_name="Нік")
-    description = models.TextField(blank=True, null=True, verbose_name="Опис компанії")
-    verified = models.BooleanField(default=False, verbose_name="Верифікований власник")
+    # Additional owner fields
+    nickname = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nickname")
+    description = models.TextField(blank=True, null=True, verbose_name="Company description")
+    verified = models.BooleanField(default=False, verbose_name="Verified owner")
     owner_image = models.ImageField(upload_to='owner_images/', blank=True, null=True,
-                                    verbose_name="Зображення власника")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата створення")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата оновлення")
+                                    verbose_name="Owner image")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created at")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated at")
+
+    # Add these fields that were previously in the custom User model
+    is_owner = models.BooleanField(default=True, verbose_name="Is warehouse owner")
 
     class Meta:
-        verbose_name = "Профіль власника складу"
-        verbose_name_plural = "Профілі власників складів"
+        verbose_name = "Warehouse Owner Profile"
+        verbose_name_plural = "Warehouse Owner Profiles"
 
     def __str__(self):
-        return f"Профіль власника складу: {self.user.username}"
+        return f"Warehouse Owner Profile: {self.user.username}"

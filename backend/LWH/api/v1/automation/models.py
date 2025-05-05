@@ -262,146 +262,145 @@ class PricingRule(models.Model):
     def __str__(self):
         return f"Pricing Rule: {self.base_rule.name}"
 
-    # Замінюємо в класі PricingRule метод calculate_price_adjustment
-# Знаходимо метод в класі (приблизно рядки 210-270)
+    def calculate_price_adjustment(self, product, base_price, cost_price=None):
+        """
+        Calculate new price according to the rule
 
-def calculate_price_adjustment(self, product, base_price, cost_price=None):
-    """
-    Calculate new price according to the rule
+        Args:
+            product: Product for which the price is calculated
+            base_price: Initial price
+            cost_price: Cost price (optional)
 
-    Args:
-        product: Product for which the price is calculated
-        base_price: Initial price
-        cost_price: Cost price (optional)
-
-    Returns:
-        Decimal: Newly calculated price
-    """
+        Returns:
+            Decimal: Newly calculated price
+        """
 
 
-    adjusted_price = Decimal(str(base_price))
+        adjusted_price = Decimal(str(base_price))
 
     # Check category match
-    if self.product_categories.exists() and product.category not in self.product_categories.all():
-        return base_price  # Rule doesn't apply to this category
+        if self.product_categories.exists() and product.category not in self.product_categories.all():
+            return base_price  # Rule doesn't apply to this category
 
-    # Calculate based on adjustment type
-    if self.adjustment_type == 'percentage':
-        adjustment = base_price * (self.adjustment_value / Decimal('100.0'))
-        adjusted_price += adjustment
+        # Calculate based on adjustment type
+        if self.adjustment_type == 'percentage':
+            adjustment = base_price * (self.adjustment_value / Decimal('100.0'))
+            adjusted_price += adjustment
 
-    elif self.adjustment_type == 'fixed':
-        adjusted_price += self.adjustment_value
+        elif self.adjustment_type == 'fixed':
+            adjusted_price += self.adjustment_value
 
-    elif self.adjustment_type == 'formula' and self.formula:
-        try:
-            # Basic variables for formula
-            variables = {
-                'base_price': float(base_price),
-                'cost_price': float(cost_price) if cost_price else 0,
-            }
+        elif self.adjustment_type == 'formula' and self.formula:
+            try:
+                # Basic variables for formula
+                variables = {
+                    'base_price': float(base_price),
+                    'cost_price': float(cost_price) if cost_price else 0,
+                }
 
-            # Safe formula evaluation without using eval()
-            result = self._safe_eval_formula(self.formula, variables)
-            adjusted_price = Decimal(str(result))
-        except Exception as e:
-            # Log error and return base price
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error calculating price with formula for product {product.id}: {e}")
-            return base_price
+                # Safe formula evaluation without using eval()
+                result = self._safe_eval_formula(self.formula, variables)
+                adjusted_price = Decimal(str(result))
+            except Exception as e:
+                # Log error and return base price
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error calculating price with formula for product {product.id}: {e}")
+                return base_price
 
-    # Apply margin constraints if specified and cost_price is known
-    if cost_price and (self.min_margin is not None or self.max_margin is not None):
-        try:
-            margin_percent = ((adjusted_price - cost_price) / cost_price) * 100
+        # Apply margin constraints if specified and cost_price is known
+        if cost_price and (self.min_margin is not None or self.max_margin is not None):
+            try:
+                margin_percent = ((adjusted_price - cost_price) / cost_price) * 100
 
-            if self.min_margin is not None and margin_percent < self.min_margin:
-                # Adjust to minimum margin
-                adjusted_price = cost_price * (1 + (self.min_margin / 100))
+                if self.min_margin is not None and margin_percent < self.min_margin:
+                    # Adjust to minimum margin
+                    adjusted_price = cost_price * (1 + (self.min_margin / 100))
 
-            if self.max_margin is not None and margin_percent > self.max_margin:
-                # Adjust to maximum margin
-                adjusted_price = cost_price * (1 + (self.max_margin / 100))
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error calculating margin constraints for product {product.id}: {e}")
-            # Continue with the price we have calculated so far
+                if self.max_margin is not None and margin_percent > self.max_margin:
+                    # Adjust to maximum margin
+                    adjusted_price = cost_price * (1 + (self.max_margin / 100))
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error calculating margin constraints for product {product.id}: {e}")
+                # Continue with the price we have calculated so far
 
-    # Ensure price doesn't become negative
-    return max(adjusted_price, Decimal('0.01'))
+        # Ensure price doesn't become negative
+        return max(adjusted_price, Decimal('0.01'))
 
-def _safe_eval_formula(self, formula, variables):
-    """
-    Safely evaluate a formula string without using eval().
+    def _safe_eval_formula(self, formula, variables):
+        """
+        Safely evaluate a formula string without using eval().
 
-    Only basic math operations and predefined variables are allowed.
+        Only basic math operations and predefined variables are allowed.
 
-    Args:
-        formula: The formula to evaluate
-        variables: Dictionary of variables available to the formula
+        Args:
+            formula: The formula to evaluate
+            variables: Dictionary of variables available to the formula
 
-    Returns:
-        float: Result of the formula evaluation
-    """
+        Returns:
+            float: Result of the formula evaluation
+        """
 
 
-    # Define allowed operators and functions
-    operators = {
-        '+': operator.add,
-        '-': operator.sub,
-        '*': operator.mul,
-        '/': operator.truediv,
-        '^': operator.pow,
-        '%': operator.mod
-    }
+        # Define allowed operators and functions
+        operators = {
+            '+': operator.add,
+            '-': operator.sub,
+            '*': operator.mul,
+            '/': operator.truediv,
+            '^': operator.pow,
+            '%': operator.mod
+        }
 
-    # Available math functions
-    math_functions = {
-        'abs': abs,
-        'round': round,
-        'min': min,
-        'max': max,
-        'ceil': math.ceil,
-        'floor': math.floor,
-        'pow': math.pow,
-        'sqrt': math.sqrt
-    }
+        # Available math functions
+        math_functions = {
+            'abs': abs,
+            'round': round,
+            'min': min,
+            'max': max,
+            'ceil': math.ceil,
+            'floor': math.floor,
+            'pow': math.pow,
+            'sqrt': math.sqrt
+        }
 
-    # Merge variables with math functions
-    safe_vars = {**variables, **math_functions}
+        # Merge variables with math functions
+        safe_vars = {**variables, **math_functions}
 
-    # Tokenize the formula
-    tokens = re.findall(r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b|\d+\.\d+|\d+|[-+*/^%()])', formula)
+        # Tokenize the formula
+        tokens = re.findall(r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b|\d+\.\d+|\d+|[-+*/^%()])', formula)
 
-    # Simple validation - check for valid tokens only
-    for token in tokens:
-        if token.isalpha() and token not in safe_vars:
-            raise ValueError(f"Unknown variable or function: {token}")
-
-    # Use a third-party library for safe evaluation
-    try:
-        # Try to use simpleeval if available
-        from simpleeval import simple_eval
-        return simple_eval(formula, names=safe_vars, operators=operators)
-    except ImportError:
-        # Fallback to a very simple and limited parser for basic operations
-        # This is a fallback and not a complete solution
-        result = 0
-        current_op = '+'
-
+        # Simple validation - check for valid tokens only
         for token in tokens:
-            if token in operators:
-                current_op = token
-            elif token in safe_vars:
-                val = safe_vars[token]
-                result = operators[current_op](result, val)
-            elif token.replace('.', '', 1).isdigit():
-                val = float(token)
-                result = operators[current_op](result, val)
+            if token.isalpha() and token not in safe_vars:
+                raise ValueError(f"Unknown variable or function: {token}")
 
-        return result
+        # Use a third-party library for safe evaluation
+        try:
+            # Try to use simpleeval if available
+            from simpleeval import simple_eval
+            return simple_eval(formula, names=safe_vars, operators=operators)
+        except ImportError:
+            # Fallback to a very simple and limited parser for basic operations
+            # This is a fallback and not a complete solution
+            result = 0
+            current_op = '+'
+
+            for token in tokens:
+                if token in operators:
+                    current_op = token
+                elif token in safe_vars:
+                    val = safe_vars[token]
+                    result = operators[current_op](result, val)
+                elif token.replace('.', '', 1).isdigit():
+                    val = float(token)
+                    result = operators[current_op](result, val)
+
+            return result
+
+    # Замінюємо в класі PricingRule метод calculate_price_adjustment
 
 class RestockRule(models.Model):
     """Model for automatic inventory replenishment"""

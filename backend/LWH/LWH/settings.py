@@ -68,7 +68,12 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'https://yourdomain.com',
     'https://www.yourdomain.com',
+    'http://localhost:3000',  # NextJS development server
+    'http://127.0.0.1:3000',  # Alternative URL for local development
 ]
+
+# Allow credentials (cookies, authorization headers, etc)
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'LWH.urls'
 
@@ -154,7 +159,7 @@ SIMPLE_JWT = {
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = 'auth.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
