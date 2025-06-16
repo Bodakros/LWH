@@ -1,11 +1,10 @@
-// services/product-service.js
 import api from '../lib/api/client';
-import { endpoints } from '../lib/api/endpoints';
+import { endpoints, getUrlWithParams } from '../lib/api/endpoints';
 
 /**
  * Service for interacting with the products API
  */
-export const productService = {
+const productService = {
     /**
      * Get products list with filtering and pagination
      * @param {Object} params - request parameters
@@ -65,36 +64,30 @@ export const productService = {
     },
 
     /**
+     * Get category details by ID
+     * @param {number} id - category ID
+     * @returns {Promise} - promise with request results
+     */
+    getCategoryById: async (id) => {
+        return api.get(getUrlWithParams(endpoints.products.categoryDetail, { pk: id }));
+    },
+
+    /**
      * Get product details by ID
      * @param {number} id - product ID
      * @returns {Promise} - promise with request results
      */
     getProductById: async (id) => {
-        return api.get(`${endpoints.products.details.replace(':id', id)}`);
+        return api.get(getUrlWithParams(endpoints.products.details, { pk: id }));
     },
 
     /**
-     * Get recommended products
-     * @param {number} productId - product ID to get recommendations for
-     * @param {number} limit - number of recommendations
+     * Get product images
+     * @param {number} productId - product ID
      * @returns {Promise} - promise with request results
      */
-    getRecommendedProducts: async (productId = null, limit = 4) => {
-        const queryParams = new URLSearchParams();
-
-        if (productId) queryParams.append('product_id', productId);
-        if (limit) queryParams.append('limit', limit);
-
-        return api.get(`${endpoints.products.recommended}?${queryParams.toString()}`);
-    },
-
-    /**
-     * Get popular products
-     * @param {number} limit - number of products
-     * @returns {Promise} - promise with request results
-     */
-    getPopularProducts: async (limit = 4) => {
-        return api.get(`${endpoints.products.popular}?limit=${limit}`);
+    getProductImages: async (productId) => {
+        return api.get(getUrlWithParams(endpoints.products.productImages, { product_id: productId }));
     },
 
     /**
@@ -103,17 +96,128 @@ export const productService = {
      * @returns {Promise} - promise with request results
      */
     getProductAttributes: async (productId) => {
-        return api.get(`${endpoints.products.attributes.replace(':id', productId)}`);
+        return api.get(getUrlWithParams(endpoints.products.productAttributes, { product_id: productId }));
     },
 
     /**
-     * Get related products
-     * @param {number} productId - product ID
-     * @param {number} limit - number of products
+     * Create a product
+     * @param {Object} productData - Product data to create
      * @returns {Promise} - promise with request results
      */
-    getRelatedProducts: async (productId, limit = 4) => {
-        return api.get(`${endpoints.products.related.replace(':id', productId)}?limit=${limit}`);
+    createProduct: async (productData) => {
+        return api.post(endpoints.products.list, productData);
+    },
+
+    /**
+     * Update a product
+     * @param {number} id - product ID
+     * @param {Object} productData - Product data to update
+     * @returns {Promise} - promise with request results
+     */
+    updateProduct: async (id, productData) => {
+        return api.put(getUrlWithParams(endpoints.products.details, { pk: id }), productData);
+    },
+
+    /**
+     * Delete a product
+     * @param {number} id - product ID
+     * @returns {Promise} - promise with request results
+     */
+    deleteProduct: async (id) => {
+        return api.delete(getUrlWithParams(endpoints.products.details, { pk: id }));
+    },
+
+    /**
+     * Upload product image
+     * @param {number} productId - product ID
+     * @param {FormData} formData - Form data with image file
+     * @param {Function} onProgress - Progress callback
+     * @returns {Promise} - promise with request results
+     */
+    uploadProductImage: async (productId, formData, onProgress = () => {}) => {
+        return api.upload(
+            getUrlWithParams(endpoints.products.productImages, { product_id: productId }),
+            formData,
+            onProgress
+        );
+    },
+
+    /**
+     * Reorder product images
+     * @param {number} productId - product ID
+     * @param {Array} imageOrders - Array of { image_id, order } objects
+     * @returns {Promise} - promise with request results
+     */
+    reorderProductImages: async (productId, imageOrders) => {
+        return api.post(
+            getUrlWithParams(endpoints.products.reorderProductImages, { product_id: productId }),
+            { image_orders: imageOrders }
+        );
+    },
+
+    /**
+     * Calculate product taxes
+     * @param {number} id - product ID
+     * @param {Object} params - Tax calculation parameters
+     * @param {number} params.quantity - Product quantity
+     * @param {boolean} params.breakdown - Whether to include detailed breakdown
+     * @returns {Promise} - promise with request results
+     */
+    calculateProductTaxes: async (id, params = {}) => {
+        const queryParams = new URLSearchParams();
+
+        if (params.quantity) queryParams.append('quantity', params.quantity);
+        if (params.breakdown !== undefined) queryParams.append('breakdown', params.breakdown);
+
+        return api.get(`${getUrlWithParams(endpoints.products.taxes, { pk: id })}?${queryParams.toString()}`);
+    },
+
+    /**
+     * Get tax types
+     * @returns {Promise} - promise with request results
+     */
+    getTaxTypes: async () => {
+        return api.get(endpoints.products.taxTypes);
+    },
+
+    /**
+     * Get tax rates
+     * @param {Object} params - request parameters
+     * @param {number} params.tax_type - tax type ID
+     * @returns {Promise} - promise with request results
+     */
+    getTaxRates: async (params = {}) => {
+        const queryParams = new URLSearchParams();
+
+        if (params.tax_type) queryParams.append('tax_type', params.tax_type);
+
+        return api.get(`${endpoints.products.taxRates}?${queryParams.toString()}`);
+    },
+
+    /**
+     * Get attributes
+     * @returns {Promise} - promise with request results
+     */
+    getAttributes: async () => {
+        return api.get(endpoints.products.attributes);
+    },
+
+    /**
+     * Get attribute details
+     * @param {number} id - attribute ID
+     * @returns {Promise} - promise with request results
+     */
+    getAttributeById: async (id) => {
+        return api.get(getUrlWithParams(endpoints.products.attributeDetail, { pk: id }));
+    },
+
+    /**
+     * Get attribute options
+     * @param {number} attributeId - attribute ID
+     * @returns {Promise} - promise with request results
+     */
+    getAttributeOptions: async (attributeId) => {
+        return api.get(getUrlWithParams(endpoints.products.attributeOptions, { attribute_id: attributeId }));
     }
 };
 

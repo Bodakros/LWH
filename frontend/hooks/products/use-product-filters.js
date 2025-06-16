@@ -3,16 +3,16 @@ import { useState, useEffect, useCallback } from 'react';
 import productService from '../../services/product-service';
 
 /**
- * Хук для управління фільтрами продуктів
- * @param {Function} onFilterChange - функція, яка викликається при зміні фільтрів
- * @returns {Object} - дані та методи для роботи з фільтрами
+ * Hook for managing product filters
+ * @param {Function} onFilterChange - callback function called when filters change
+ * @returns {Object} - data and methods for working with filters
  */
 export const useProductFilters = (onFilterChange) => {
-    // Стан для категорій
+    // State for categories
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
 
-    // Стан для активних фільтрів
+    // State for active filters
     const [activeFilters, setActiveFilters] = useState({
         category: null,
         price_range: [0, 50000],
@@ -21,7 +21,7 @@ export const useProductFilters = (onFilterChange) => {
         brands: []
     });
 
-    // Завантаження категорій
+    // Fetch categories
     const fetchCategories = useCallback(async () => {
         setLoadingCategories(true);
         try {
@@ -34,17 +34,17 @@ export const useProductFilters = (onFilterChange) => {
         }
     }, []);
 
-    // Завантаження категорій при ініціалізації
+    // Initialize categories on mount
     useEffect(() => {
         fetchCategories();
     }, [fetchCategories]);
 
-    // Оновлення активних фільтрів
+    // Update active filters
     const updateFilter = useCallback((filterName, value) => {
         setActiveFilters(prev => {
             const newFilters = { ...prev, [filterName]: value };
 
-            // Викликаємо callback, якщо він існує
+            // Call callback if provided
             if (onFilterChange) {
                 onFilterChange(newFilters);
             }
@@ -53,7 +53,7 @@ export const useProductFilters = (onFilterChange) => {
         });
     }, [onFilterChange]);
 
-    // Методи для окремих фільтрів
+    // Specific filter update methods
     const setCategoryFilter = useCallback((categoryId) => {
         updateFilter('category', categoryId);
     }, [updateFilter]);
@@ -74,7 +74,7 @@ export const useProductFilters = (onFilterChange) => {
         updateFilter('brands', brands);
     }, [updateFilter]);
 
-    // Очищення всіх фільтрів
+    // Clear all filters
     const clearAllFilters = useCallback(() => {
         setActiveFilters({
             category: null,
@@ -85,11 +85,17 @@ export const useProductFilters = (onFilterChange) => {
         });
 
         if (onFilterChange) {
-            onFilterChange({});
+            onFilterChange({
+                category: null,
+                price_range: [0, 50000],
+                in_stock: null,
+                min_rating: null,
+                brands: []
+            });
         }
     }, [onFilterChange]);
 
-    // Очищення конкретного фільтра
+    // Clear specific filter
     const clearFilter = useCallback((filterName) => {
         const defaultValues = {
             category: null,
@@ -116,5 +122,3 @@ export const useProductFilters = (onFilterChange) => {
         clearFilter
     };
 };
-
-export default useProductFilters;

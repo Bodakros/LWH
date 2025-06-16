@@ -46,10 +46,8 @@ class Address(models.Model):
             self.country,
             f"{self.oblast} region" if self.oblast else None,
             f"{self.raion} district" if self.raion else None,
-            f"{self.hromada} TG" if self.hromada else None,
             f"{locality_prefix} {self.locality}",
-            self.get_full_street() if self.get_full_street() else None,
-            f"building {self.building}"
+            self.street_address,
         ]
         # Remove empty elements
         formatted_address = ", ".join(filter(None, address_parts))

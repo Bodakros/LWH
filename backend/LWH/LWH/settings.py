@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
-    'api.v1.users',
+    'api.v1.users.apps.UsersConfig',
     'api.v1.products',
     'api.v1.warehouses',
     'api.v1.inventory',
@@ -159,7 +159,7 @@ SIMPLE_JWT = {
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
-AUTH_USER_MODEL = 'auth.User'
+AUTH_USER_MODEL = 'users.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {

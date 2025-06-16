@@ -1,6 +1,6 @@
 // hooks/products/use-products.js
 import { useState, useEffect, useCallback } from 'react';
-import productService from '../../services/product-service';
+import searchService from '../../services/search-service';
 
 /**
  * Hook for fetching and managing product list
@@ -31,7 +31,8 @@ export const useProducts = (initialParams = {}) => {
         setError(null);
 
         try {
-            const response = await productService.getProducts(params);
+            const response = await searchService.searchProducts(params);
+
             setProducts(response.results || []);
 
             // Handle pagination
@@ -42,8 +43,8 @@ export const useProducts = (initialParams = {}) => {
                 page_size: params.page_size
             });
         } catch (err) {
-            setError(err.message || 'Error loading products');
             console.error('Error fetching products:', err);
+            setError(err.message || 'Error loading products');
         } finally {
             setLoading(false);
         }
@@ -87,7 +88,6 @@ export const useProducts = (initialParams = {}) => {
      * Function to update sort parameters
      * @param {string} sortField - field to sort by
      */
-
     const updateSort = useCallback((sortField) => {
         updateParams({ sort: sortField });
     }, [updateParams]);
@@ -114,5 +114,3 @@ export const useProducts = (initialParams = {}) => {
         refresh: fetchProducts
     };
 };
-
-export default useProducts;
