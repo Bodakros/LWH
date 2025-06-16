@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
-    'api.v1.users.apps.UsersConfig',
+    'api.v1.users',
     'api.v1.products',
     'api.v1.warehouses',
     'api.v1.inventory',

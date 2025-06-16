@@ -1,4 +1,4 @@
-// components/landing/cta-section.jsx
+// components/landing/cta-section.tsx
 import { Button } from "@/components/ui/button"
 
 export function CtaSection() {

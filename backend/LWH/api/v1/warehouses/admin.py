@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import mark_safe
+from django import forms
 
 from .models import Warehouse, Stock, Address, WarehouseImage, StockImage
 from ..admin import LWHBaseAdmin, LWHImageAdmin
 from ..search.admin import WarehouseAdminExtension
+from ..users.models import User
+
 
 @admin.register(Address)
 class AddressAdmin(LWHBaseAdmin):
@@ -43,6 +46,7 @@ class WarehouseImageInline(admin.TabularInline):
         return _("No image")
 
     image_preview.short_description = _("Preview")
+
 
 @admin.register(Warehouse)
 class WarehouseAdmin(LWHBaseAdmin, WarehouseAdminExtension):

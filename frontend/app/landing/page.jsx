@@ -1,4 +1,4 @@
-// app/landing/page.jsx
+// app/landing/page.tsx
 import { LandingHeader } from "@/components/landing-header"
 import { LandingFooter } from "@/components/landing-footer"
 import { HeroSection } from "@/components/landing/hero-section"

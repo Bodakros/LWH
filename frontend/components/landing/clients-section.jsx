@@ -1,4 +1,4 @@
-// components/landing/clients-section.jsx
+// components/landing/clients-section.tsx
 import Image from "next/image"
 
 export function ClientsSection() {

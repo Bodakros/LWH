@@ -55,8 +55,7 @@ class InventoryItem(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='inventory_items',
-        verbose_name=_("Seller"),
-        limit_choices_to={'is_seller': True}
+        verbose_name=_("Seller")
     )
     quantity = models.DecimalField(
         max_digits=15,
@@ -178,8 +177,7 @@ class InventoryMovement(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='inventory_movements',
-        verbose_name=_("Seller"),
-        limit_choices_to={'is_seller': True}
+        verbose_name=_("Seller")
     )
     quantity = models.DecimalField(
         max_digits=15,
@@ -387,8 +385,7 @@ class ReceivingRecord(models.Model):
         null=True,
         blank=True,
         related_name='supplied_receivings',
-        verbose_name=_("Supplier (user)"),
-        limit_choices_to={'is_seller': True}
+        verbose_name=_("Supplier (user)")
     )
     warehouse = models.ForeignKey(
         Warehouse,

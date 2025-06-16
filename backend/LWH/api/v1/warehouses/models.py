@@ -65,8 +65,7 @@ class Warehouse(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='owned_warehouses',
-        verbose_name="Warehouse owner",
-        limit_choices_to={'is_owner': True}
+        verbose_name="Warehouse owner"
     )
     address = models.OneToOneField(
         'Address',
@@ -138,8 +137,9 @@ class Stock(models.Model):
 
     @property
     def volume(self):
-        """Calculates the volume of the storage unit"""
-        return self.length * self.width * self.height
+        if self.length and self.width and self.height:
+            return self.length * self.width * self.height
+        return None
 
     def __str__(self):
         return f"{self.name} ({self.location_code})"

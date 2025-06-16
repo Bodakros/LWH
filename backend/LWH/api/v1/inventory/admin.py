@@ -25,7 +25,7 @@ class InventoryItemAdmin(LWHBaseAdmin, InventoryItemAdminExtension):
         (_('Pricing'), {'fields': ('purchase_price', 'purchase_price_per_unit')}),
         (_('Timestamps'), {'fields': ('received_date', 'created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
-    readonly_fields = ('warehouse', 'created_at', 'updated_at')
+    readonly_fields = ('warehouse', 'created_at', 'updated_at', 'received_date')
 
     def product_info(self, obj):
         return f"{obj.product.name} ({obj.product.sku})"

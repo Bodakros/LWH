@@ -1,4 +1,4 @@
-// components/landing/hero-section.jsx
+// components/landing/hero-section.tsx
 import Image from "next/image"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"

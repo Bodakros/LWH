@@ -1,4 +1,4 @@
-// components/landing/how-it-works-section.jsx
+// components/landing/how-it-works-section.tsx
 import { ArrowRight, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 

@@ -1,6 +1,15 @@
-// components/landing/features-section.jsx
+// components/landing/features-section.tsx
 import { BarChart3, Box, Package, Shield, Truck, Warehouse } from "lucide-react"
-import { FeatureCard } from "./feature-card"
+
+function FeatureCard({ icon, title, description }) {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="mb-4">{icon}</div>
+            <h3 className="text-xl font-semibold text-[#1a4f72] mb-2">{title}</h3>
+            <p className="text-gray-600">{description}</p>
+        </div>
+    )
+}
 
 export function FeaturesSection() {
     return (
