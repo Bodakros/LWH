@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
-    'api.v1.users',
+    'api.v1.users.apps.UsersConfig',
     'api.v1.products',
     'api.v1.warehouses',
     'api.v1.inventory',
@@ -68,7 +68,12 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'https://yourdomain.com',
     'https://www.yourdomain.com',
+    'http://localhost:3000',  # NextJS development server
+    'http://127.0.0.1:3000',  # Alternative URL for local development
 ]
+
+# Allow credentials (cookies, authorization headers, etc)
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'LWH.urls'
 

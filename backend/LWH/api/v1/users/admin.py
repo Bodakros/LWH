@@ -54,9 +54,9 @@ class CustomUserAdmin(UserAdmin):
             return []
 
         inlines = []
-        if obj.is_seller:
+        if hasattr(obj, 'seller_profile'):
             inlines.append(SellerProfileInline)
-        if obj.is_owner:
+        if hasattr(obj, 'owner_profile'):
             inlines.append(OwnerProfileInline)
 
         return inlines
@@ -66,10 +66,18 @@ class CustomUserAdmin(UserAdmin):
 
         # Create profiles if needed
         if obj.is_seller and not hasattr(obj, 'seller_profile'):
-            SellerProfile.objects.create(user=obj)
+            try:
+                # Use get_or_create to avoid errors
+                SellerProfile.objects.get_or_create(user=obj)
+            except Exception as e:
+                # Log or print the error for debugging
+                print(f"Error creating seller profile: {e}")
 
         if obj.is_owner and not hasattr(obj, 'owner_profile'):
-            OwnerProfile.objects.create(user=obj)
+            try:
+                OwnerProfile.objects.get_or_create(user=obj)
+            except Exception as e:
+                print(f"Error creating owner profile: {e}")
 
 
 @admin.register(SellerProfile)

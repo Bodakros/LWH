@@ -8,11 +8,26 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    is_seller = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
+    phone_number = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name',
                   'is_seller', 'is_owner', 'phone_number')
         read_only_fields = ('id',)
+
+    def get_is_seller(self, obj):
+        return hasattr(obj, 'seller_profile')
+
+    def get_is_owner(self, obj):
+        return hasattr(obj, 'owner_profile')
+
+    def get_phone_number(self, obj):
+        if hasattr(obj, 'user_profile'):
+            return obj.user_profile.phone_number
+        return None
 
 
 class RegisterSerializer(serializers.ModelSerializer):

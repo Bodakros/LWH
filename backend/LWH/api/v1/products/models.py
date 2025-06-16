@@ -7,8 +7,8 @@ import json
 
 
 class ProductCategory(models.Model):
-    """Модель для категорій продуктів з підтримкою ієрархії"""
-    name = models.CharField(max_length=255, verbose_name=_("Назва категорії"))
+    """Model for product categories with hierarchy support"""
+    name = models.CharField(max_length=255, verbose_name=_("Category Name"))
     slug = models.SlugField(max_length=255, unique=True, verbose_name=_("URL-slug"))
     parent = models.ForeignKey(
         'self',
@@ -16,18 +16,18 @@ class ProductCategory(models.Model):
         null=True,
         blank=True,
         related_name='children',
-        verbose_name=_("Батьківська категорія")
+        verbose_name=_("Parent Category")
     )
-    description = models.TextField(blank=True, verbose_name=_("Опис категорії"))
+    description = models.TextField(blank=True, verbose_name=_("Category Description"))
     image = models.ImageField(upload_to='category_images/', blank=True, null=True,
-                              verbose_name=_("Зображення категорії"))
+                              verbose_name=_("Category Image"))
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
 
     class Meta:
-        verbose_name = _("Категорія продукту")
-        verbose_name_plural = _("Категорії продуктів")
+        verbose_name = _("Product Category")
+        verbose_name_plural = _("Product Categories")
         ordering = ['name']
 
     def __str__(self):
@@ -40,18 +40,18 @@ class ProductCategory(models.Model):
 
 
 class TaxType(models.Model):
-    """Модель для типів податків (наприклад, ПДВ, акциз на сигарети, тощо)"""
-    code = models.CharField(max_length=20, unique=True, verbose_name=_("Код податку"))
-    name = models.CharField(max_length=100, verbose_name=_("Назва типу податку"))
-    description = models.TextField(blank=True, verbose_name=_("Опис податку"))
-    is_active = models.BooleanField(default=True, verbose_name=_("Активний"))
+    """Model for tax types (e.g., VAT, tobacco excise, etc.)"""
+    code = models.CharField(max_length=20, unique=True, verbose_name=_("Tax Code"))
+    name = models.CharField(max_length=100, verbose_name=_("Tax Type Name"))
+    description = models.TextField(blank=True, verbose_name=_("Tax Description"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Active"))
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
 
     class Meta:
-        verbose_name = _("Тип податку")
-        verbose_name_plural = _("Типи податків")
+        verbose_name = _("Tax Type")
+        verbose_name_plural = _("Tax Types")
         ordering = ['code', 'name']
 
     def __str__(self):
@@ -59,94 +59,94 @@ class TaxType(models.Model):
 
 
 class TaxRate(models.Model):
-    """Модель для зберігання податкових ставок"""
+    """Model for storing tax rates"""
     TAX_CALCULATION_TYPES = [
-        ('percentage', _('Відсоток від вартості')),
-        ('fixed', _('Фіксована сума')),
-        ('quantity_based', _('На основі кількості')),
-        ('formula_based', _('На основі формули')),
+        ('percentage', _('Percentage of value')),
+        ('fixed', _('Fixed amount')),
+        ('quantity_based', _('Quantity-based')),
+        ('formula_based', _('Formula-based')),
     ]
 
     tax_type = models.ForeignKey(
         TaxType,
         on_delete=models.PROTECT,
         related_name='rates',
-        verbose_name=_("Тип податку")
+        verbose_name=_("Tax Type")
     )
-    name = models.CharField(max_length=100, verbose_name=_("Назва податкової ставки"))
+    name = models.CharField(max_length=100, verbose_name=_("Tax Rate Name"))
     calculation_type = models.CharField(
         max_length=20,
         choices=TAX_CALCULATION_TYPES,
         default='percentage',
-        verbose_name=_("Тип розрахунку")
+        verbose_name=_("Calculation Type")
     )
 
-    # Для розрахунків за відсотком
+    # For percentage calculations
     rate_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        verbose_name=_("Відсоток податку"),
+        verbose_name=_("Tax Percentage"),
         null=True,
         blank=True,
-        help_text=_("Використовується для типу розрахунку 'Відсоток від вартості'")
+        help_text=_("Used for 'Percentage of value' calculation type")
     )
 
-    # Для фіксованих та кількісних розрахунків
+    # For fixed and quantity-based calculations
     fixed_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        verbose_name=_("Фіксована сума"),
+        verbose_name=_("Fixed Amount"),
         null=True,
         blank=True,
-        help_text=_("Використовується для типів розрахунку 'Фіксована сума' та 'На основі кількості'")
+        help_text=_("Used for 'Fixed amount' and 'Quantity-based' calculation types")
     )
 
-    # Для формульних розрахунків
+    # For formula-based calculations
     formula = models.TextField(
         blank=True,
         null=True,
-        verbose_name=_("Формула розрахунку"),
+        verbose_name=_("Calculation Formula"),
         help_text=_(
-            "Використовується для типу розрахунку 'На основі формули'. Використовуйте змінні price, quantity, etc.")
+            "Used for 'Formula-based' calculation type. Use variables like price, quantity, etc.")
     )
 
     applicable_categories = models.ManyToManyField(
         ProductCategory,
         blank=True,
         related_name='tax_rates',
-        verbose_name=_("Застосовується до категорій")
+        verbose_name=_("Applicable to Categories")
     )
 
-    is_active = models.BooleanField(default=True, verbose_name=_("Активна"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Active"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
 
     class Meta:
-        verbose_name = _("Податкова ставка")
-        verbose_name_plural = _("Податкові ставки")
+        verbose_name = _("Tax Rate")
+        verbose_name_plural = _("Tax Rates")
         ordering = ['tax_type', 'name']
 
     def __str__(self):
         if self.calculation_type == 'percentage':
             return f"{self.name} ({self.rate_percentage}%)"
         elif self.calculation_type == 'fixed':
-            return f"{self.name} ({self.fixed_amount} грн)"
+            return f"{self.name} ({self.fixed_amount} USD)"
         elif self.calculation_type == 'quantity_based':
-            return f"{self.name} ({self.fixed_amount} грн/од.)"
+            return f"{self.name} ({self.fixed_amount} USD/unit)"
         else:
-            return f"{self.name} (формула)"
+            return f"{self.name} (formula)"
 
     def calculate_tax(self, base_price, quantity=1, **kwargs):
         """
-        Розраховує податок на основі ціни та кількості
+        Calculates tax based on price and quantity
 
         Args:
-            base_price: Базова ціна товару
-            quantity: Кількість товару
-            **kwargs: Додаткові параметри для розрахунку формули
+            base_price: Base price of the product
+            quantity: Product quantity
+            **kwargs: Additional parameters for formula calculation
 
         Returns:
-            Decimal: Сума податку
+            Decimal: Tax amount
         """
         if not self.is_active:
             return 0
@@ -168,108 +168,108 @@ class TaxRate(models.Model):
 
         elif self.calculation_type == 'formula_based' and self.formula:
             try:
-                # Базові змінні для формули
+                # Basic variables for formula
                 variables = {
                     'price': float(base_price),
                     'quantity': quantity,
                     **kwargs
                 }
 
-                # Безпечний спосіб виконання формули - використовуємо eval()
-                # У продакшн-середовищі варто використовувати більш безпечні бібліотеки
-                # для обчислення формул, такі як simpleeval або safer_eval
+                # Safe way to execute formula - using eval()
+                # In production environment, you should use safer libraries
+                # for formula calculation, such as simpleeval or safer_eval
                 result = eval(self.formula, {"__builtins__": {}}, variables)
                 return result
             except Exception as e:
-                # Логування помилки та повернення 0 у випадку помилки
-                # В реальному додатку тут варто додати належне логування
-                print(f"Помилка обчислення податку за формулою: {e}")
+                # Log the error and return 0 in case of an error
+                # In a real application, proper logging should be added here
+                print(f"Error calculating tax using formula: {e}")
                 return 0
 
         return 0
 
 
 class Product(models.Model):
-    """Базова модель продукту з підтримкою різних типів та динамічних атрибутів"""
+    """Base product model with support for different types and dynamic attributes"""
     PRODUCT_TYPE_CHOICES = [
-        ('food', _('Харчовий')),
-        ('industrial', _('Промисловий')),
-        ('tobacco', _('Тютюнові вироби')),
-        ('alcohol', _('Алкогольні напої')),
-        ('electronics', _('Електроніка')),
-        ('clothing', _('Одяг')),
-        ('other', _('Інший')),
+        ('food', _('Food')),
+        ('industrial', _('Industrial')),
+        ('tobacco', _('Tobacco Products')),
+        ('alcohol', _('Alcoholic Beverages')),
+        ('electronics', _('Electronics')),
+        ('clothing', _('Clothing')),
+        ('other', _('Other')),
     ]
 
-    # Базові дані продукту
-    name = models.CharField(max_length=255, verbose_name=_("Назва продукту"))
+    # Basic product data
+    name = models.CharField(max_length=255, verbose_name=_("Product Name"))
     slug = models.SlugField(max_length=255, unique=True, verbose_name=_("URL-slug"))
-    sku = models.CharField(max_length=50, unique=True, verbose_name=_("Артикул"))
+    sku = models.CharField(max_length=50, unique=True, verbose_name=_("SKU"))
 
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         limit_choices_to={'is_seller': True},
         related_name='products',
-        verbose_name=_("Продавець")
+        verbose_name=_("Seller")
     )
 
     category = models.ForeignKey(
         ProductCategory,
         on_delete=models.PROTECT,
         related_name='products',
-        verbose_name=_("Категорія")
+        verbose_name=_("Category")
     )
 
-    description = models.TextField(blank=True, verbose_name=_("Опис"))
-    base_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Базова ціна"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    base_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Base Price"))
 
-    # Фізичні характеристики
-    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Довжина (см)"))
-    width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Ширина (см)"))
-    height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Висота (см)"))
-    weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Вага (г)"))
+    # Physical characteristics
+    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Length (cm)"))
+    width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Width (cm)"))
+    height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Height (cm)"))
+    weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name=_("Weight (g)"))
 
-    # Тип продукту і податки
+    # Product type and taxes
     product_type = models.CharField(
         max_length=20,
         choices=PRODUCT_TYPE_CHOICES,
         default='other',
-        verbose_name=_("Тип продукту")
+        verbose_name=_("Product Type")
     )
-    taxable = models.BooleanField(default=True, verbose_name=_("Оподатковується"))
+    taxable = models.BooleanField(default=True, verbose_name=_("Taxable"))
 
-    # Зв'язок з типами податків
+    # Connection with tax types
     applicable_tax_types = models.ManyToManyField(
         'TaxType',
         related_name='products',
         blank=True,
-        verbose_name=_("Застосовні типи податків")
+        verbose_name=_("Applicable Tax Types")
     )
 
-    # Визначені ставки податків (якщо кастомні для конкретного продукту)
+    # Defined tax rates (if custom for specific product)
     custom_tax_rates = models.ManyToManyField(
         'TaxRate',
         related_name='custom_products',
         blank=True,
-        verbose_name=_("Кастомні ставки податків")
+        verbose_name=_("Custom Tax Rates")
     )
 
-    # Поле для зберігання динамічних атрибутів у форматі JSON
-    attributes_json = models.JSONField(default=dict, blank=True, verbose_name=_("Динамічні атрибути"))
+    # Field for storing dynamic attributes in JSON format
+    attributes_json = models.JSONField(default=dict, blank=True, verbose_name=_("Dynamic Attributes"))
 
-    # Зображення продукту (головне зображення)
+    # Product image (main image)
     main_image = models.ImageField(upload_to='product_images/', blank=True, null=True,
-                                   verbose_name=_("Головне зображення"))
+                                   verbose_name=_("Main Image"))
 
-    # Статуси і часові мітки
-    is_active = models.BooleanField(default=True, verbose_name=_("Активний"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
+    # Status and timestamps
+    is_active = models.BooleanField(default=True, verbose_name=_("Active"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
 
     class Meta:
-        verbose_name = _("Продукт")
-        verbose_name_plural = _("Продукти")
+        verbose_name = _("Product")
+        verbose_name_plural = _("Products")
         ordering = ['name']
 
     def __str__(self):
@@ -282,24 +282,24 @@ class Product(models.Model):
 
     @property
     def volume(self):
-        """Розраховує об'єм продукту, якщо вказані всі розміри"""
+        """Calculates the product volume if all dimensions are specified"""
         if self.length and self.width and self.height:
             return self.length * self.width * self.height
         return None
 
     def set_attribute(self, key, value):
-        """Встановлює динамічний атрибут продукту"""
+        """Sets a dynamic product attribute"""
         attributes = self.attributes_json
         attributes[key] = value
         self.attributes_json = attributes
         self.save(update_fields=['attributes_json'])
 
     def get_attribute(self, key, default=None):
-        """Отримує значення динамічного атрибуту"""
+        """Gets a dynamic attribute value"""
         return self.attributes_json.get(key, default)
 
     def remove_attribute(self, key):
-        """Видаляє динамічний атрибут"""
+        """Removes a dynamic attribute"""
         attributes = self.attributes_json
         if key in attributes:
             del attributes[key]
@@ -309,26 +309,26 @@ class Product(models.Model):
         return False
 
     def get_applicable_tax_rates(self):
-        """Отримує всі застосовні податкові ставки для продукту"""
+        """Gets all applicable tax rates for the product"""
         if not self.taxable:
             return []
 
-        # Спочатку включаємо кастомні ставки для продукту, якщо вони є
+        # First include custom rates for the product, if any
         tax_rates = list(self.custom_tax_rates.filter(is_active=True))
 
-        # Якщо є явно вказані типи податків для продукту
+        # If there are explicitly specified tax types for the product
         if self.applicable_tax_types.exists():
             tax_types = self.applicable_tax_types.filter(is_active=True)
             for tax_type in tax_types:
                 tax_rates.extend(list(tax_type.rates.filter(is_active=True)))
 
-        # Додаємо ставки з категорії продукту
+        # Add rates from the product category
         category_rates = self.category.tax_rates.filter(is_active=True)
         for rate in category_rates:
             if rate not in tax_rates:
                 tax_rates.append(rate)
 
-        # Додаємо ставки для типу продукту (наприклад, акциз на тютюн)
+        # Add rates for the product type (e.g., tobacco excise)
         from django.db.models import Q
         product_type_rates = TaxRate.objects.filter(
             Q(tax_type__code=self.product_type),
@@ -342,14 +342,14 @@ class Product(models.Model):
 
     def calculate_taxes(self, quantity=1, **kwargs):
         """
-        Розраховує всі податки для продукту
+        Calculates all taxes for the product
 
         Args:
-            quantity: Кількість продукту
-            **kwargs: Додаткові параметри для розрахунку податків
+            quantity: Product quantity
+            **kwargs: Additional parameters for tax calculation
 
         Returns:
-            dict: Словник з податками {tax_name: tax_amount}
+            dict: Dictionary with taxes {tax_name: tax_amount}
         """
         if not self.taxable:
             return {}
@@ -366,31 +366,12 @@ class Product(models.Model):
         return taxes
 
     def calculate_total_tax_amount(self, quantity=1, **kwargs):
-        """
-        Розраховує загальну суму податків для продукту
-
-        Args:
-            quantity: Кількість продукту
-            **kwargs: Додаткові параметри для розрахунку податків
-
-        Returns:
-            Decimal: Загальна сума податків
-        """
+        # To calculate total tax from others taxes
         taxes = self.calculate_taxes(quantity, **kwargs)
         return sum(taxes.values())
 
     def calculate_final_price(self, quantity=1, include_taxes=True, **kwargs):
-        """
-        Розраховує кінцеву ціну продукту з урахуванням податків
-
-        Args:
-            quantity: Кількість продукту
-            include_taxes: Чи включати податки в розрахунок
-            **kwargs: Додаткові параметри для розрахунку податків
-
-        Returns:
-            Decimal: Кінцева ціна
-        """
+        # To calculate final price from total tax
         base_total = self.base_price * quantity
 
         if include_taxes and self.taxable:
@@ -401,38 +382,38 @@ class Product(models.Model):
 
 
 class ProductImage(models.Model):
-    """Модель для зберігання додаткових зображень продукту"""
+    """Model for storing additional product images"""
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         related_name='images',
-        verbose_name=_("Продукт")
+        verbose_name=_("Product")
     )
-    image = models.ImageField(upload_to='product_images/', verbose_name=_("Зображення"))
-    title = models.CharField(max_length=100, blank=True, null=True, verbose_name=_("Назва зображення"))
-    is_main = models.BooleanField(default=False, verbose_name=_("Головне зображення"))
-    order = models.PositiveIntegerField(default=0, verbose_name=_("Порядок відображення"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
+    image = models.ImageField(upload_to='product_images/', verbose_name=_("Image"))
+    title = models.CharField(max_length=100, blank=True, null=True, verbose_name=_("Image Title"))
+    is_main = models.BooleanField(default=False, verbose_name=_("Main Image"))
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display Order"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
     class Meta:
-        verbose_name = _("Зображення продукту")
-        verbose_name_plural = _("Зображення продуктів")
+        verbose_name = _("Product Image")
+        verbose_name_plural = _("Product Images")
         ordering = ['product', 'order']
 
     def __str__(self):
-        return f"Зображення для {self.product.name}"
+        return f"Image for {self.product.name}"
 
     def save(self, *args, **kwargs):
-        # Якщо це головне зображення, оновлюємо поле main_image у продукту
-        # та знімаємо прапорець "головне" з інших зображень
+        # If this is the main image, update the main_image field in the product
+        # and unset the "main" flag from other images
         if self.is_main:
-            # Оновлюємо інші зображення
+            # Update other images
             ProductImage.objects.filter(
                 product=self.product,
                 is_main=True
             ).exclude(pk=self.pk).update(is_main=False)
 
-            # Оновлюємо поле main_image у продукту
+            # Update the main_image field in the product
             if self.image:
                 self.product.main_image = self.image
                 self.product.save(update_fields=['main_image'])
@@ -441,7 +422,7 @@ class ProductImage(models.Model):
 
 
 class Attribute(models.Model):
-    """Модель для визначення типів атрибутів продуктів"""
+    """Model for defining product attribute types"""
     TEXT = 'text'
     NUMBER = 'number'
     BOOLEAN = 'boolean'
@@ -450,42 +431,42 @@ class Attribute(models.Model):
     DATE = 'date'
 
     ATTRIBUTE_TYPE_CHOICES = [
-        (TEXT, _('Текст')),
-        (NUMBER, _('Число')),
-        (BOOLEAN, _('Так/Ні')),
-        (SELECT, _('Вибір одного')),
-        (MULTIPLE_SELECT, _('Вибір кількох')),
-        (DATE, _('Дата')),
+        (TEXT, _('Text')),
+        (NUMBER, _('Number')),
+        (BOOLEAN, _('Yes/No')),
+        (SELECT, _('Single Select')),
+        (MULTIPLE_SELECT, _('Multiple Select')),
+        (DATE, _('Date')),
     ]
 
-    name = models.CharField(max_length=255, verbose_name=_("Назва атрибуту"))
+    name = models.CharField(max_length=255, verbose_name=_("Attribute Name"))
     slug = models.SlugField(max_length=255, unique=True, verbose_name=_("URL-slug"))
-    description = models.TextField(blank=True, verbose_name=_("Опис атрибуту"))
+    description = models.TextField(blank=True, verbose_name=_("Attribute Description"))
 
     categories = models.ManyToManyField(
         ProductCategory,
         blank=True,
         related_name='attributes',
-        verbose_name=_("Категорії")
+        verbose_name=_("Categories")
     )
 
     attribute_type = models.CharField(
         max_length=20,
         choices=ATTRIBUTE_TYPE_CHOICES,
         default=TEXT,
-        verbose_name=_("Тип атрибуту")
+        verbose_name=_("Attribute Type")
     )
 
-    required = models.BooleanField(default=False, verbose_name=_("Обов'язковий"))
-    is_filterable = models.BooleanField(default=False, verbose_name=_("Використовується для фільтрації"))
-    is_displayed = models.BooleanField(default=True, verbose_name=_("Відображається у деталях продукту"))
+    required = models.BooleanField(default=False, verbose_name=_("Required"))
+    is_filterable = models.BooleanField(default=False, verbose_name=_("Used for Filtering"))
+    is_displayed = models.BooleanField(default=True, verbose_name=_("Displayed in Product Details"))
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Створено"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Оновлено"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
 
     class Meta:
-        verbose_name = _("Атрибут")
-        verbose_name_plural = _("Атрибути")
+        verbose_name = _("Attribute")
+        verbose_name_plural = _("Attributes")
         ordering = ['name']
 
     def __str__(self):
@@ -498,19 +479,19 @@ class Attribute(models.Model):
 
 
 class AttributeOption(models.Model):
-    """Модель для варіантів значень атрибутів типу SELECT та MULTIPLE_SELECT"""
+    """Model for attribute value options for SELECT and MULTIPLE_SELECT types"""
     attribute = models.ForeignKey(
         Attribute,
         on_delete=models.CASCADE,
         related_name='options',
-        verbose_name=_("Атрибут")
+        verbose_name=_("Attribute")
     )
-    value = models.CharField(max_length=255, verbose_name=_("Значення"))
-    order = models.PositiveIntegerField(default=0, verbose_name=_("Порядок відображення"))
+    value = models.CharField(max_length=255, verbose_name=_("Value"))
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display Order"))
 
     class Meta:
-        verbose_name = _("Варіант значення атрибуту")
-        verbose_name_plural = _("Варіанти значень атрибутів")
+        verbose_name = _("Attribute Option")
+        verbose_name_plural = _("Attribute Options")
         unique_together = ('attribute', 'value')
         ordering = ['attribute', 'order', 'value']
 
@@ -519,39 +500,39 @@ class AttributeOption(models.Model):
 
 
 class ProductAttributeValue(models.Model):
-    """Модель для зв'язування продуктів з конкретними значеннями атрибутів"""
+    """Model for linking products with specific attribute values"""
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         related_name='attribute_values',
-        verbose_name=_("Продукт")
+        verbose_name=_("Product")
     )
     attribute = models.ForeignKey(
         Attribute,
         on_delete=models.CASCADE,
-        verbose_name=_("Атрибут")
+        verbose_name=_("Attribute")
     )
 
-    # Різні типи значень атрибутів
-    text_value = models.TextField(blank=True, null=True, verbose_name=_("Текстове значення"))
+    # Different types of attribute values
+    text_value = models.TextField(blank=True, null=True, verbose_name=_("Text Value"))
     number_value = models.DecimalField(max_digits=15, decimal_places=6, blank=True, null=True,
-                                       verbose_name=_("Числове значення"))
-    boolean_value = models.BooleanField(blank=True, null=True, verbose_name=_("Логічне значення"))
-    date_value = models.DateField(blank=True, null=True, verbose_name=_("Значення дати"))
+                                       verbose_name=_("Number Value"))
+    boolean_value = models.BooleanField(blank=True, null=True, verbose_name=_("Boolean Value"))
+    date_value = models.DateField(blank=True, null=True, verbose_name=_("Date Value"))
 
-    # Для атрибутів типу SELECT (одиночний вибір)
+    # For SELECT type attributes (single selection)
     select_value = models.ForeignKey(
         AttributeOption,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='product_single_values',
-        verbose_name=_("Значення одиночного вибору")
+        verbose_name=_("Single Select Value")
     )
 
     class Meta:
-        verbose_name = _("Значення атрибуту продукту")
-        verbose_name_plural = _("Значення атрибутів продуктів")
+        verbose_name = _("Product Attribute Value")
+        verbose_name_plural = _("Product Attribute Values")
         unique_together = ('product', 'attribute')
 
     def __str__(self):
@@ -562,16 +543,16 @@ class ProductAttributeValue(models.Model):
         elif self.attribute.attribute_type == Attribute.NUMBER and self.number_value:
             return f"{attribute_name}: {self.number_value}"
         elif self.attribute.attribute_type == Attribute.BOOLEAN and self.boolean_value is not None:
-            return f"{attribute_name}: {_('Так') if self.boolean_value else _('Ні')}"
+            return f"{attribute_name}: {_('Yes') if self.boolean_value else _('No')}"
         elif self.attribute.attribute_type == Attribute.SELECT and self.select_value:
             return f"{attribute_name}: {self.select_value.value}"
         elif self.attribute.attribute_type == Attribute.DATE and self.date_value:
             return f"{attribute_name}: {self.date_value}"
 
-        return f"{attribute_name}: {_('(Не встановлено)')}"
+        return f"{attribute_name}: {_('(Not set)')}"
 
     def save(self, *args, **kwargs):
-        # Валідація значення відповідно до типу атрибуту
+        # Validate value according to attribute type
         if self.attribute.attribute_type == Attribute.TEXT:
             self.number_value = None
             self.boolean_value = None
@@ -600,17 +581,17 @@ class ProductAttributeValue(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Синхронізуємо з JSON-полем продукту для швидкого доступу
+        # Synchronize with the product's JSON field for quick access
         self._sync_with_product_json()
 
     def _sync_with_product_json(self):
-        """Синхронізує значення атрибуту з JSON-полем продукту"""
+        """Synchronizes attribute value with the product's JSON field"""
         attributes = self.product.attributes_json
 
-        # Ключ для JSON
+        # Key for JSON
         key = f"attr_{self.attribute.slug}"
 
-        # Визначаємо значення для запису в JSON
+        # Determine value to write to JSON
         if self.attribute.attribute_type == Attribute.TEXT and self.text_value:
             value = self.text_value
         elif self.attribute.attribute_type == Attribute.NUMBER and self.number_value:
@@ -622,7 +603,7 @@ class ProductAttributeValue(models.Model):
         elif self.attribute.attribute_type == Attribute.SELECT and self.select_value:
             value = self.select_value.value
         elif self.attribute.attribute_type == Attribute.MULTIPLE_SELECT:
-            # Отримуємо всі значення для multiple select
+            # Get all values for multiple select
             values = [val.attribute_option.value for val in
                       self.multiple_values.all()]
             value = values if values else None
@@ -634,27 +615,27 @@ class ProductAttributeValue(models.Model):
         elif key in attributes:
             del attributes[key]
 
-        # Оновлюємо JSON-поле продукту
+        # Update the product's JSON field
         Product.objects.filter(pk=self.product.pk).update(attributes_json=attributes)
 
 
 class ProductMultipleAttributeValue(models.Model):
-    """Модель для зберігання множинних значень атрибутів продуктів (для типу multiple_select)"""
+    """Model for storing multiple attribute values for products (for multiple_select type)"""
     product_attribute = models.ForeignKey(
         ProductAttributeValue,
         on_delete=models.CASCADE,
         related_name='multiple_values',
-        verbose_name=_("Атрибут продукту")
+        verbose_name=_("Product Attribute")
     )
     attribute_option = models.ForeignKey(
         AttributeOption,
         on_delete=models.CASCADE,
-        verbose_name=_("Варіант значення")
+        verbose_name=_("Option Value")
     )
 
     class Meta:
-        verbose_name = _("Множинне значення атрибуту продукту")
-        verbose_name_plural = _("Множинні значення атрибутів продуктів")
+        verbose_name = _("Multiple Attribute Value")
+        verbose_name_plural = _("Multiple Attribute Values")
         unique_together = ('product_attribute', 'attribute_option')
 
     def __str__(self):
@@ -663,17 +644,17 @@ class ProductMultipleAttributeValue(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        # Після збереження оновлюємо JSON-поле продукту
+        # After saving, update the product's JSON field
         self.product_attribute._sync_with_product_json()
 
 
-# Додаткові моделі, специфічні для різних типів продуктів
-# Замість створення окремих таблиць, ми використовуємо атрибути
+# Additional models specific to different product types
+# Instead of creating separate tables, we use attributes
 
 class FoodSpecificAttributes:
     """
-    Клас-хелпер для роботи з атрибутами харчових продуктів.
-    Використовуйте ці константи для доступу до специфічних атрибутів в JSON.
+    Helper class for working with food product attributes.
+    Use these constants to access specific attributes in JSON.
     """
     EXPIRATION_DATE = 'food_expiration_date'
     STORAGE_TEMP = 'food_storage_temp'
@@ -684,19 +665,19 @@ class FoodSpecificAttributes:
 
     @staticmethod
     def get_expiration_date(product):
-        """Отримує термін придатності продукту"""
+        """Gets the product expiration date"""
         return product.get_attribute(FoodSpecificAttributes.EXPIRATION_DATE)
 
     @staticmethod
     def set_expiration_date(product, date_str):
-        """Встановлює термін придатності продукту"""
+        """Sets the product expiration date"""
         product.set_attribute(FoodSpecificAttributes.EXPIRATION_DATE, date_str)
 
 
 class IndustrialSpecificAttributes:
     """
-    Клас-хелпер для роботи з атрибутами промислових продуктів.
-    Використовуйте ці константи для доступу до специфічних атрибутів в JSON.
+    Helper class for working with industrial product attributes.
+    Use these constants to access specific attributes in JSON.
     """
     WARRANTY_PERIOD = 'industrial_warranty_period'
     MATERIAL = 'industrial_material'
@@ -707,10 +688,10 @@ class IndustrialSpecificAttributes:
 
     @staticmethod
     def get_warranty_period(product):
-        """Отримує гарантійний термін продукту"""
+        """Gets the product warranty period"""
         return product.get_attribute(IndustrialSpecificAttributes.WARRANTY_PERIOD)
 
     @staticmethod
     def set_warranty_period(product, period):
-        """Встановлює гарантійний термін продукту"""
+        """Sets the product warranty period"""
         product.set_attribute(IndustrialSpecificAttributes.WARRANTY_PERIOD, period)

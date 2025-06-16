@@ -22,6 +22,7 @@ urlpatterns = [
 
     # ReceivingItem endpoints
     path('receiving/<int:receiving_record_id>/items/', views.receiving_item_list, name='receiving-item-list'),
-    path('receiving/<int:receiving_record_id>/items/<int:pk>/', views.receiving_item_detail, name='receiving-item-detail'),
+    path('receiving/<int:receiving_record_id>/items/<int:pk>/', views.receiving_item_detail,
+         name='receiving-item-detail'),
     path('receiving/<int:receiving_record_id>/items/<int:pk>/receive/', views.receive_item, name='receive-item'),
 ]
